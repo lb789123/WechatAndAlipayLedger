@@ -87,9 +87,10 @@ async function boot() {
   await loadProfile(window.state.profileId, true);
   if (window.renderAll) window.renderAll();
   if (window.renderCategoriesTable) window.renderCategoriesTable();
-
+  console.log('boot finished, binding import/export buttons');
   // 绑定导入导出按钮
   window.addEventListener('load', () => {
+    console.log('window load event fired, binding buttons');
     const pid = document.querySelector('#dataProfileId');
     if (pid && window.state)
       pid.textContent = window.state.profileId;

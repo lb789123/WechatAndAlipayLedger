@@ -1,0 +1,19 @@
+ledgerNew/
+├── index.html          # 主HTML文件
+├── ledger.html         # 原始文件（保留）
+├── css/
+│   └── main.css        # 所有样式文件
+└── js/
+    ├── utils.js        # 工具函数
+    ├── db.js           # IndexedDB数据库操作
+    ├── state.js        # 全局状态管理
+    ├── theme.js        # 主题管理
+    ├── fx.js           # 汇率相关功能
+    ├── account.js      # 账户管理
+    ├── transaction.js  # 交易管理
+    ├── budget.js       # 预算管理
+    ├── reports.js      # 报表功能
+    ├── import-export.js # 导入导出功能
+    ├── render.js       # 渲染函数
+    ├── events.js       # 事件绑定
+    └── main.js         # 主入口文件

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>我的记账本</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<header class="top">
+  <div class="container brand">
+    <div class="logo" aria-hidden="true"></div>
+     <h1>我的记账本 · 模块化版本</h1> <span class="pill badge-origin">原创：吾爱破解论坛 baozehua666</span>
+    <span class="pill" id="profilePill">🔐 ID: <b id="profileIdShow"></b></span>
+    <button class="btn" id="switchIdBtn" title="切换/新建 ID">切换ID</button>
+    <div class="space"></div>
+    <button class="btn" id="toggleThemeBtn" title="切换浅色/深色">🌓 主题</button>
+    <button class="btn" id="toggleMaskBtn" title="金额遮罩">🙈 金额遮罩</button>
+  </div>
+  <div class="container">
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+</header>
+
+<main class="container">
+  <!-- 仪表盘 -->
+  <section id="sec-dashboard" class="section active">
+    <div class="grid g-3">
+      <div class="card"><div class="content kpi">
+        <span class="label">净资产（折算至基准）</span>
+        <span id="netWorth" class="value amount">--</span>
+        <span id="netWorthNote" class="note"></span>
+      </div></div>
+      <div class="card"><div class="content kpi">
+        <span class="label">本月收入（基准）</span>
+        <span id="monthIn" class="value amount negative">--</span>
+      </div></div>
+      <div class="card"><div class="content kpi">
+        <span class="label">本月支出（基准）</span>
+        <span id="monthOut" class="value amount positive">--</span>
+      </div></div>
+    </div>
+
+    <div class="grid g-2" style="margin-top:14px">
+      <div class="card"><div class="content">
+        <div class="row"><h3>账户概览</h3><div class="space"></div><span class="note">支持多币种，按基准折算</span></div>
+        <div id="accountCards" class="grid g-3"></div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn primary" data-nav="#sec-accounts">➕ 新建账户</button>
+          <button class="btn" data-nav="#sec-trans">✍️ 记一笔</button>
+        </div>
+      </div></div>
+
+      <div class="card"><div class="content">
+        <div class="row"><h3>资产结构（按账户）</h3><div class="space"></div><span class="note" id="acctDonutNote"></span></div>
+        <canvas id="acctDonut" height="260"></canvas>
+        <div class="legend" id="acctLegend"></div>
+      </div></div>
+    </div>
+
+    <div class="card" style="margin-top:14px"><div class="content">
+      <div class="row"><h3>最近交易</h3><div class="space"></div><span class="note">点击"编辑"可直接修改</span></div>
+      <table id="recentTxTable">
+        <thead><tr><th>日期</th><th>账户</th><th>分类/备注</th><th style="text-align:right">金额</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div></div>
+  </section>
+
+  <!-- 账户 -->
+  <section id="sec-accounts" class="section">
+    <div class="card"><div class="content">
+      <div class="row">
+        <h3>账户列表</h3>
+        <div class="space"></div>
+        <span class="note">按住左侧"⋮⋮"拖动行排序（仅当前 ID 生效）</span>
+        <button class="btn primary" id="btnAddAccount" style="margin-left:8px">新增账户</button>
+      </div>
+      <table id="accountsTable">
+        <thead><tr><th style="width:32px"></th><th>名称</th><th>类型</th><th>币种</th><th>计入净资产</th><th style="text-align:right">余额（本币）</th><th style="text-align:right">≈ 基准</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <h3>新建/编辑账户</h3>
+      <form id="accountForm" class="grid g-3">
+        <div class="field"><label>名称</label><input required id="acc_name" /></div>
+        <div class="field"><label>类型</label>
+          <select id="acc_type">
+            <option value="cash">现金</option>
+            <option value="bank">银行卡</option>
+            <option value="credit">信用卡</option>
+            <option value="investment">理财/投资</option>
+            <option value="loan">负债/贷款</option>
+            <option value="wallet">钱包/平台</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="field"><label>币种</label>
+          <select id="acc_currency">
+            <option value="CNY">CNY</option>
+            <option value="HKD">HKD</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+        <div class="field"><label>期初余额</label><input id="acc_opening" type="number" step="0.01" value="0" /></div>
+        <div class="field"><label>计入净资产</label>
+          <select id="acc_in_net">
+            <option value="true">是</option>
+            <option value="false">否</option>
+          </select>
+        </div>
+        <div class="field"><label>排序</label><input id="acc_sort" type="number" value="0" /></div>
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <input type="hidden" id="acc_id" />
+          <button class="btn primary" type="submit">保存账户</button>
+          <button class="btn" type="button" id="btnResetAccountForm">清空表单</button>
+        </div>
+      </form>
+    </div></div>
+  </section>
+
+  <!-- 交易 -->
+  <section id="sec-trans" class="section">
+    <div class="card"><div class="content">
+      <div class="row">
+        <h3>记一笔</h3>
+        <span class="pill editing-badge" id="txEditingPill">✏️ 正在编辑流水</span>
+        <div class="space"></div>
+        <span class="pill">快捷键：N</span>
+      </div>
+      <form id="txnForm" class="grid g-3">
+        <div class="field"><label>日期</label><input id="tx_date" type="date" required /></div>
+        <div class="field"><label>类型</label>
+          <select id="tx_type">
+            <option value="out">支出</option>
+            <option value="in">收入</option>
+            <option value="transfer">转账</option>
+          </select>
+        </div>
+        <div class="field"><label>来源/主账户</label><select id="tx_account"></select></div>
+        <div class="field transfer-only" style="display:none"><label>目标账户（转账）</label><select id="tx_target"></select></div>
+        <div class="field"><label>金额</label><input id="tx_amount" type="number" step="0.01" required /></div>
+        <div class="field non-transfer"><label>分类</label>
+          <select id="tx_category"></select>
+        </div>
+        <div class="field"><label>对方</label><input id="tx_payee" placeholder="商家/单位/朋友…" /></div>
+        <div class="field" style="grid-column:1/-1"><label>备注</label><input id="tx_memo" /></div>
+        <input type="hidden" id="tx_edit_id" />
+        <input type="hidden" id="tx_edit_peer_id" />
+        <input type="hidden" id="tx_edit_transfer" />
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <button class="btn primary" type="submit">保存</button>
+          <button class="btn" type="reset" id="btnResetTx">重置</button>
+          <button class="btn warn" type="button" id="btnCancelEditTx" style="display:none">取消编辑</button>
+        </div>
+      </form>
+
+      <!-- 新增：导入 XLSX 流水 -->
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <input type="file" id="importTxFile" accept=".xlsx,.xls" style="display:none" />
+        <button class="btn" id="btnImportTx">📥 导入 XLSX 流水</button>
+        <span class="note">支持第一张表，选择文件后会弹出映射窗口，可手动选择各字段对应的Excel列。所有导入的流水将使用统一的来源账户。分类不在分类列表中时会自动设为"其他"。</span>
+      </div>
+
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div class="row"><h3>流水</h3>
+        <div class="space"></div>
+        <div class="row">
+          <label class="muted">筛选：</label>
+          <select id="filter_account"></select>
+          <input id="filter_kw" placeholder="关键字/分类/对方" />
+          <button class="btn" id="btnClearFilter">清空</button>
+        </div>
+      </div>
+      <table id="txTable">
+        <thead><tr><th>日期</th><th>账户</th><th>类型</th><th>分类/对方</th><th>备注</th><th style="text-align:right">金额</th><th style="text-align:right">操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div></div>
+  </section>
+
+  <!-- 预算 -->
+  <section id="sec-budget" class="section">
+    <div class="card"><div class="content">
+      <div class="row">
+        <h3>预算查询</h3>
+        <div class="space"></div>
+        <div class="row" style="gap:8px;align-items:center">
+          <label class="muted">查询月份：</label>
+          <input type="month" id="budgetMonthSelector" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)" />
+          <button class="btn" id="btnResetBudgetMonth" title="回到当前月">本月</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="muted" id="budgetMonthLabel"></span></div>
+      <div class="grid g-3" id="budgetGrid" style="margin-top:12px"></div>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div class="row">
+        <h3>设置预算</h3>
+        <span class="pill editing-badge" id="bdgEditingPill">✏️ 正在编辑预算</span>
+      </div>
+      <form id="budgetForm" class="grid g-3">
+        <div class="field"><label>分类</label><select id="bdg_category"></select></div>
+        <div class="field"><label>月预算金额（基准）</label><input id="bdg_amount" type="number" step="0.01" /></div>
+      <input type="hidden" id="bdg_edit_key"/>
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <button class="btn primary" type="submit">保存预算</button>
+          <button class="btn" type="reset" id="btnResetBudget">清空</button>
+          <button class="btn warn" type="button" id="btnCancelEditBudget" style="display:none">取消编辑</button>
+        </div>
+      </form>
+      <p class="note">在"本月预算"卡片上点击"编辑/删除"即可管理已设置的预算。点击预算卡片可查看该分类的交易明细。</p>
+    </div></div>
+
+    <!-- 交易明细区域 -->
+    <div class="card" id="budgetDetailCard" style="display:none;margin-top:14px"><div class="content">
+      <div class="row">
+        <h3 id="budgetDetailTitle">交易明细</h3>
+        <div class="space"></div>
+        <button class="btn ghost" id="btnCloseBudgetDetail">关闭</button>
+      </div>
+      <table id="budgetDetailTable" style="margin-top:12px">
+        <thead><tr><th>日期</th><th>账户</th><th>对方</th><th>备注</th><th style="text-align:right">金额</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="row" style="margin-top:12px;justify-content:flex-end">
+        <span class="muted">合计：</span>
+        <strong class="amount negative" id="budgetDetailTotal"></strong>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 报表 -->
+  <section id="sec-reports" class="section">
+    <div class="card"><div class="content">
+      <div class="row"><h3>12 个月收支趋势（基准）</h3><div class="space"></div><span class="note" id="trendNote"></span></div>
+      <canvas id="lineChart" height="260"></canvas>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div class="row"><h3>本月支出分类占比（基准）</h3><div class="space"></div><span class="note" id="pieNote"></span></div>
+      <canvas id="pieChart" height="260"></canvas>
+    </div></div>
+  </section>
+
+  <!-- 设置 / 数据 -->
+  <section id="sec-settings" class="section">
+    <div class="card"><div class="content">
+      <h3>偏好设置（仅当前 ID 生效）</h3>
+      <form id="prefsForm" class="grid g-3">
+        <div class="field"><label>基准货币</label>
+          <select id="baseCurrency">
+            <option value="CNY">CNY (¥)</option>
+            <option value="HKD">HKD (HK$)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+          <span class="note">更改后请到下方"汇率管理"更新各币种兑基准的汇率。</span>
+        </div>
+        <div class="field"><label>金额遮罩</label>
+          <select id="maskAmounts">
+            <option value="false">关闭</option>
+            <option value="true">开启</option>
+          </select>
+        </div>
+        <div class="field"><label>主题</label>
+          <select id="themeSelect">
+            <option value="dark">深色</option>
+            <option value="light">浅色</option>
+          </select>
+        </div>
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <button class="btn primary" type="submit">保存设置</button>
+        </div>
+      </form>
+      <p class="note">提示：ID 切换按钮在顶部；每个 ID 的数据与设置互不影响。</p>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div class="row"><h3>汇率管理（1 外币 = ? 基准）</h3><div class="space"></div><span class="note">数据源：open.er-api.com（已自动方向转换）</span></div>
+      <table id="fxTable">
+        <thead><tr><th>外币</th><th style="text-align:right">汇率</th><th>更新时间</th><th style="text-align:right"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <form id="fxForm" class="grid g-3" style="margin-top:10px">
+        <div class="field"><label>外币（3 字母）</label><input id="fx_quote" placeholder="如 USD/HKD/EUR" maxlength="6" /></div>
+        <div class="field"><label>汇率（外币→基准）</label><input id="fx_rate" type="number" step="0.0001" placeholder="例如 USD→CNY 写 7.12" /></div>
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <button class="btn primary" type="submit">保存/更新</button>
+          <button class="btn" type="button" id="fxReset">清空</button>
+        </div>
+      </form>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="fxFetchAccounts">根据账户币种联网更新</button>
+        <button class="btn" id="fxFetchAll">全量更新（常见币种）</button>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div class="row">
+        <h3>交易分类管理</h3>
+        <div class="space"></div>
+        <span class="note">自定义交易分类，仅当前 ID 生效</span>
+        <button class="btn primary" id="btnAddCategory" style="margin-left:8px">新增分类</button>
+      </div>
+      <table id="categoriesTable" style="margin-top:12px">
+        <thead><tr><th>分类名称</th><th style="text-align:right">操作</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <form id="categoryForm" class="grid g-3" style="margin-top:12px">
+        <div class="field"><label>分类名称</label><input id="cat_name" placeholder="输入新分类名称" /></div>
+        <div class="row" style="grid-column:1/-1;gap:8px">
+          <input type="hidden" id="cat_edit_name" />
+          <button class="btn primary" type="submit" id="btnSaveCategory">保存分类</button>
+          <button class="btn" type="button" id="btnCancelCategory">取消</button>
+          <button class="btn warn" type="button" id="btnResetCategories" style="margin-left:auto">重置为默认</button>
+        </div>
+      </form>
+      <p class="note">提示：删除分类不会修改已有交易记录的分类。编辑分类会同步更新所有使用该分类的交易和预算。</p>
+    </div></div>
+
+<div class="card"><div class="content">
+      <div class="row">
+        <h3>数据导入 / 导出</h3>
+        <div class="space"></div>
+        <span class="note">仅作用于当前 ID：<b id="dataProfileId"></b></span>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="btnExportData">导出 JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+        <button class="btn" id="btnImportData">导入 JSON</button>
+        <button class="btn negative" id="btnClearCurrentData">清空当前 ID 数据</button>
+      </div>
+      <p class="note">导入为"合并导入"，同 ID 记录将被覆盖。操作前建议先导出备份。</p>
+    </div></div>
+
+    <div class="card danger"><div class="content">
+      <strong>⚠️ 提示</strong>
+      <p class="note">本版本新增：交易流水可编辑；预算可编辑/删除。顶部点击"切换ID"管理多账户空间。</p>
+    </div></div>
+  </section>
+</main>
+
+<footer class="container">Made with "吾爱破解论坛 baozehua666"</footer>
+
+<div id="tooltip" class="tooltip"></div>
+
+<!-- 表头映射弹窗 -->
+<div id="xlsxMappingModal" class="modal" style="display:none">
+  <div class="modal-content">
+    <div class="row">
+      <h3>表头映射</h3>
+      <div class="space"></div>
+      <button class="btn ghost" id="btnCloseMappingModal">✕</button>
+    </div>
+    <p class="note" style="margin:8px 0">请为每个字段选择对应的Excel列。如果某列不存在或不需要，可留空。</p>
+    
+    <div style="max-height:300px;overflow-y:auto;margin:12px 0;border:1px solid var(--border);border-radius:8px;padding:8px">
+      <table style="width:100%;font-size:13px">
+        <thead><tr><th style="padding:8px;border-bottom:1px solid var(--border)">Excel列名</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border)">预览数据（前3行）</th></tr></thead>
+        <tbody id="xlsxPreviewTable"></tbody>
+      </table>
+    </div>
+    
+    <form id="xlsxMappingForm" class="grid g-2" style="margin-top:12px">
+      <div class="field">
+        <label>日期 <span style="color:var(--negative)">*</span></label>
+        <select id="map_date" required style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"></select>
+      </div>
+      <div class="field">
+        <label>类型（收入/支出/转账）</label>
+        <select id="map_type" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">不映射</option></select>
+      </div>
+      <div class="field">
+        <label>来源账户 <span style="color:var(--negative)">*</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="map_account" required placeholder="输入账户名称" list="accountList" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px" />
+          <datalist id="accountList"></datalist>
+        </div>
+        <span class="note">所有导入的流水都将使用此账户</span>
+      </div>
+      <div class="field">
+        <label>目标账户（转账时使用）</label>
+        <select id="map_target" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">不映射</option></select>
+      </div>
+      <div class="field">
+        <label>金额 <span style="color:var(--negative)">*</span></label>
+        <select id="map_amount" required style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"></select>
+      </div>
+      <div class="field">
+        <label>分类</label>
+        <select id="map_category" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">不映射</option></select>
+      </div>
+      <div class="field">
+        <label>对方</label>
+        <select id="map_payee" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">不映射</option></select>
+      </div>
+      <div class="field">
+        <label>备注</label>
+        <select id="map_memo" style="padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:13px"><option value="">不映射</option></select>
+      </div>
+    </form>
+    
+    <div class="row" style="margin-top:16px;justify-content:flex-end;gap:8px">
+      <button class="btn" id="btnCancelMapping">取消</button>
+      <button class="btn primary" id="btnConfirmMapping">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 引入 SheetJS，用于读取 xlsx/xls 文件（用于导入流水） -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<!-- 引入所有模块 -->
+<script src="js/utils.js"></script>
+<script src="js/db.js"></script>
+<script src="js/state.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/account.js"></script>
+<script src="js/transaction.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/category.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/import-export.js"></script>
+<script src="js/render.js"></script>
+<script src="js/events.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 // ====== 交易分类管理 ======
-const DEFAULT_CATEGORIES = ['餐饮','交通','居住','数码','服饰','娱乐','教育','亲友代付','医疗','日用','旅行','其他'];
+const DEFAULT_CATEGORIES = ['餐饮','交通','居住','数码','服饰','娱乐','教育','亲友代付','红包','医疗','日用','旅行','其他'];
 
 // 预定义的分类别名映射（可按需扩展）
 const DEFAULT_CATEGORY_ALIASES = {
@@ -14,6 +14,7 @@ const DEFAULT_CATEGORY_ALIASES = {
   '医疗': ['医院','诊所','药品','药店','体检','医疗费'],
   '日用': ['日用品','超市','便利店','生活用品'],
   '旅行': ['机票','酒店','旅行','旅游','景点'],
+  '红包': ['红包','微信红包（单发）','微信红包（群发）','微信红包','红包钱'],
   '其他': []
 };
 
@@ -40,9 +41,17 @@ async function loadCategories(){
   // 尝试加载分类别名映射（category -> [alias...])
   const storedAliases = await window.idb.getPrefRaw(pkey('cat_aliases'));
   if(storedAliases && typeof storedAliases === 'object'){
-    // 使用数据库中保存的映射，但确保所有分类都有数组（可能为空）
+    // 使用数据库中保存的映射，但确保所有分类都有数组（并把默认别名合并进去）
     state.categoryAliases = Object.assign({}, storedAliases);
-    state.categories.forEach(c => { if(!Array.isArray(state.categoryAliases[c])) state.categoryAliases[c] = (DEFAULT_CATEGORY_ALIASES[c] || []).slice(); });
+
+    // 对每个当前分类，合并已有别名与默认别名（保留已有别名，追加默认别名中缺失的项）
+    state.categories.forEach(c => {
+      const existing = Array.isArray(state.categoryAliases[c]) ? state.categoryAliases[c].slice() : [];
+      const defaults = Array.isArray(DEFAULT_CATEGORY_ALIASES[c]) ? DEFAULT_CATEGORY_ALIASES[c].slice() : [];
+      // 合并，保持 existing 的顺序，追加 defaults 中不在 existing 中的项（简单去重，大小写敏感）
+      const merged = existing.concat(defaults.filter(d => !existing.includes(d)));
+      state.categoryAliases[c] = merged;
+    });
   } else {
     // 使用预定义别名（对默认分类使用 DEFAULT_CATEGORY_ALIASES，其他自定义分类创建空数组）
     state.categoryAliases = {};
@@ -101,7 +110,7 @@ async function addCategory(name, aliases){
     if(Array.isArray(aliases)) aliasArr = aliases.map(a=>String(a||'').trim()).filter(Boolean);
     else aliasArr = String(aliases||'').split(',').map(s=>s.trim()).filter(Boolean);
   } else {
-    // 如果没有��入别名，尝试从默认别名里拿
+    // 如果没有传入别名，尝试从默认别名里拿
     if(DEFAULT_CATEGORY_ALIASES[trimmed]) aliasArr = DEFAULT_CATEGORY_ALIASES[trimmed].slice();
   }
   if(!state.categoryAliases) state.categoryAliases = {};

@@ -288,27 +288,78 @@ async function executeXlsxImportWithMapping(rows, mapping, accountName){
   }
   
   // 验证分类是否存在，如果不存在则设置为"其他"
-  function validateCategory(catName){
-    if(!catName || !catName.trim()) return '其他'; // 空分类默认设为"其他"
-    const trimmed = catName.trim();
-    // 检查分类是否在分类列表中
-    if(state.categories && state.categories.length > 0){
-      if(state.categories.includes(trimmed)){
-        return trimmed;
+  // function validateCategory(catName){
+  //   if(!catName || !catName.trim()) return '其他'; // 空分类默认设为"其他"
+  //   const trimmed = catName.trim();
+  //   // 检查分类是否在分类列表中
+  //   if(state.categories && state.categories.length > 0){
+  //     if(state.categories.includes(trimmed)){
+  //       return trimmed;
+  //     }
+  //   }
+  //   // 如果不在分类列表中，返回"其他"
+  //   // 确保"其他"分类存在于分类列表中（如果不存在则添加）
+  //   if(!state.categories.includes('其他')){
+  //     state.categories.push('其他');
+  //     const pkey = window.pkey || ((k)=> `${state.profileId}::${k}`);
+  //     window.idb.setPrefRaw(pkey('categories'), state.categories).catch(()=>{});
+  //     // 更新分类选择器
+  //     if(window.updateCategorySelects) window.updateCategorySelects();
+  //   }
+  //   return '其他';
+  // }
+  // 验证分类是否存在，如果不存在则设置为"其他"
+function validateCategory(catName){
+  if(!catName || !catName.trim()) return '其他'; // 空分类默认设为"其他"
+  const trimmed = catName.trim();
+
+  // 1) 直接名称匹配（精确）
+  if(state.categories && state.categories.includes(trimmed)){
+    return trimmed;
+  }
+
+  // 2) 如果可用，先使用全局智能匹配函数（优先）
+  if(typeof window.findCategoryByLabel === 'function'){
+    try{
+      const matched = window.findCategoryByLabel(trimmed);
+      if(matched) return matched;
+    }catch(_){}
+  }
+
+  // 3) 基于别名映射的归一化匹配（兜底）
+  const norm = x => String(x||'').toLowerCase().replace(/\s+/g,'').replace(/[^\w\u4e00-\u9fa5]/g,'');
+  const inorm = norm(trimmed);
+
+  if(state.categoryAliases && typeof state.categoryAliases === 'object'){
+    for(const [cat, aliases] of Object.entries(state.categoryAliases)){
+      if(!Array.isArray(aliases) || aliases.length === 0) continue;
+      for(const a of aliases){
+        if(!a) continue;
+        const anorm = norm(a);
+        if(!anorm) continue;
+        // 精确归一化匹配
+        if(anorm === inorm) return cat;
+        // 别名是输入的子串（如输入包含别名），提高命中率
+        if(inorm.includes(anorm)) return cat;
+        // 反向：别名中包含输入（短输入可能匹配别名）
+        if(anorm.includes(inorm) && inorm.length >= 2) return cat;
       }
     }
-    // 如果不在分类列表中，返回"其他"
-    // 确保"其他"分类存在于分类列表中（如果不存在则添加）
-    if(!state.categories.includes('其他')){
-      state.categories.push('其他');
-      const pkey = window.pkey || ((k)=> `${state.profileId}::${k}`);
-      window.idb.setPrefRaw(pkey('categories'), state.categories).catch(()=>{});
-      // 更新分类选择器
-      if(window.updateCategorySelects) window.updateCategorySelects();
-    }
-    return '其他';
   }
-  
+
+  // 4) 都没匹配到，确保 '其他' 存在并返回它（并保存到 prefs）
+  if(!state.categories.includes('其他')){
+    state.categories.push('其他');
+    if(!state.categoryAliases) state.categoryAliases = {};
+    if(!Array.isArray(state.categoryAliases['其他'])) state.categoryAliases['其他'] = [];
+    const pkey = window.pkey || ((k)=> `${state.profileId}::${k}`);
+    // 尝试保存 categories 与 cat_aliases（异步失败不影响流程）
+    window.idb.setPrefRaw(pkey('categories'), state.categories).catch(()=>{});
+    window.idb.setPrefRaw(pkey('cat_aliases'), state.categoryAliases).catch(()=>{});
+    if(window.updateCategorySelects) window.updateCategorySelects();
+  }
+  return '其他';
+}
   // 查找或创建来源账户
   const accName = String(accountName).trim();
   if(!accName){

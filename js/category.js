@@ -1,6 +1,25 @@
 // ====== 交易分类管理 ======
 const DEFAULT_CATEGORIES = ['餐饮','交通','居住','数码','服饰','娱乐','教育','亲友代付','医疗','日用','旅行','其他'];
 
+// 预定义的分类别名映射（可按需扩展）
+const DEFAULT_CATEGORY_ALIASES = {
+  '餐饮': ['饭','吃饭','外卖','餐馆','午餐','晚餐','早餐','餐厅'],
+  '交通': ['地铁','公交','打车','出租','滴滴','交通费','燃油'],
+  '居住': ['房租','租金','物业','水电','燃气','房贷'],
+  '数码': ['电子','手机','电脑','平板','数码产品','配件'],
+  '服饰': ['衣服','鞋子','服装','配饰','帽子'],
+  '娱乐': ['电影','游戏','KTV','聚会','演出','娱乐消费'],
+  '教育': ['培训','学费','课程','教材','讲座'],
+  '亲友代付': ['代付','朋友代付','亲友代付'],
+  '医疗': ['医院','诊所','药品','药店','体检','医疗费'],
+  '日用': ['日用品','超市','便利店','生活用品'],
+  '旅行': ['机票','酒店','旅行','旅游','景点'],
+  '其他': []
+};
+
+// 暴露默认别名，方便外部查看或扩展
+window.DEFAULT_CATEGORY_ALIASES = JSON.parse(JSON.stringify(DEFAULT_CATEGORY_ALIASES));
+
 // 初始化分类（从数据库加载或使用默认值）
 async function loadCategories(){
   if(!window.state || !window.pkey) return;
@@ -21,11 +40,16 @@ async function loadCategories(){
   // 尝试加载分类别名映射（category -> [alias...])
   const storedAliases = await window.idb.getPrefRaw(pkey('cat_aliases'));
   if(storedAliases && typeof storedAliases === 'object'){
-    state.categoryAliases = storedAliases;
+    // 使用数据库中保存的映射，但确保所有分类都有数组（可能为空）
+    state.categoryAliases = Object.assign({}, storedAliases);
+    state.categories.forEach(c => { if(!Array.isArray(state.categoryAliases[c])) state.categoryAliases[c] = (DEFAULT_CATEGORY_ALIASES[c] || []).slice(); });
   } else {
+    // 使用预定义别名（对默认分类使用 DEFAULT_CATEGORY_ALIASES，其他自定义分类创建空数组）
     state.categoryAliases = {};
-    // make sure every default category has an array (possibly empty)
-    state.categories.forEach(c => { if(!state.categoryAliases[c]) state.categoryAliases[c] = []; });
+    state.categories.forEach(c => {
+      if(DEFAULT_CATEGORY_ALIASES[c]) state.categoryAliases[c] = DEFAULT_CATEGORY_ALIASES[c].slice();
+      else state.categoryAliases[c] = [];
+    });
     await window.idb.setPrefRaw(pkey('cat_aliases'), state.categoryAliases);
   }
   
@@ -76,6 +100,9 @@ async function addCategory(name, aliases){
   if(aliases){
     if(Array.isArray(aliases)) aliasArr = aliases.map(a=>String(a||'').trim()).filter(Boolean);
     else aliasArr = String(aliases||'').split(',').map(s=>s.trim()).filter(Boolean);
+  } else {
+    // 如果没有��入别名，尝试从默认别名里拿
+    if(DEFAULT_CATEGORY_ALIASES[trimmed]) aliasArr = DEFAULT_CATEGORY_ALIASES[trimmed].slice();
   }
   if(!state.categoryAliases) state.categoryAliases = {};
   state.categoryAliases[trimmed] = aliasArr;
@@ -169,8 +196,11 @@ async function resetCategories(){
   }
   const state = window.state;
   state.categories = [...DEFAULT_CATEGORIES];
+  // 使用默认别名映射的副本
   state.categoryAliases = {};
-  state.categories.forEach(c => state.categoryAliases[c] = []);
+  state.categories.forEach(c => {
+    state.categoryAliases[c] = (DEFAULT_CATEGORY_ALIASES[c] || []).slice();
+  });
   await saveCategories();
   if(window.renderCategoriesTable) window.renderCategoriesTable();
   alert('已重置为默认分类');

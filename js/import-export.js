@@ -150,8 +150,14 @@ async function clearCurrentIdData(){
   };
   await delFromStore('accounts','id');
   await delFromStore('transactions','id');
-  const allB = await window.idb.getAll('budgets'); for(const b of allB.filter(x=>x.profileId===prof){ await window.idb.del('budgets', b.key); }
-  const allF = await window.idb.getAll('fxrates'); for(const r of allF.filter(x=>x.profileId===prof){ await window.idb.del('fxrates', r.key); }
+  const allB = await window.idb.getAll('budgets'); 
+  for (const b of allB.filter(x => x.profileId === prof)) {
+    await window.idb.del('budgets', b.key);
+  }
+  const allF = await window.idb.getAll('fxrates'); 
+  for (const r of allF.filter(x => x.profileId === prof)) {
+    await window.idb.del('fxrates', r.key);
+  }
 
   if(window.loadProfile) await window.loadProfile(prof);
   if(window.renderAll) window.renderAll();

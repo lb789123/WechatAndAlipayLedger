@@ -310,11 +310,12 @@
         <button class="btn primary" id="btnAddCategory" style="margin-left:8px">新增分类</button>
       </div>
       <table id="categoriesTable" style="margin-top:12px">
-        <thead><tr><th>分类名称</th><th style="text-align:right">操作</th></tr></thead>
+        <thead><tr><th>分类名称</th><th>相近词 (别名)</th><th style="text-align:right">操作</th></tr></thead>
         <tbody></tbody>
       </table>
       <form id="categoryForm" class="grid g-3" style="margin-top:12px">
         <div class="field"><label>分类名称</label><input id="cat_name" placeholder="输入新分类名称" /></div>
+        <div class="field"><label>相近词 (别名)</label><input id="cat_aliases" placeholder="多个别名用逗号分隔，如：早饭,早餐,早点" /><span class="note">用于导入流水时的自动匹配</span></div>
         <div class="row" style="grid-column:1/-1;gap:8px">
           <input type="hidden" id="cat_edit_name" />
           <button class="btn primary" type="submit" id="btnSaveCategory">保存分类</button>

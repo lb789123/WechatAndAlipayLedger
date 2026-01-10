@@ -197,11 +197,13 @@ function bindEvents(){
     $('#cat_name').focus();
     $('#cat_edit_name').value='';
     $('#cat_name').value='';
+    $('#cat_aliases').value='';
   };
   
   $('#btnCancelCategory').onclick=()=>{
     $('#categoryForm').reset();
     $('#cat_edit_name').value='';
+    $('#cat_aliases').value='';
   };
   
   $('#categoryForm').onsubmit=async (e)=>{

@@ -445,18 +445,24 @@ function renderCategoriesTable(){
   
   state.categories.forEach(cat=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${cat}</td>
+    // Handle both string categories (old format) and object categories with aliases (new format)
+    const catName = typeof cat === 'string' ? cat : cat.name;
+    const aliases = typeof cat === 'object' && cat.aliases ? cat.aliases : '';
+    tr.innerHTML=`<td>${catName}</td>
+      <td>${aliases}</td>
       <td style='text-align:right'>
-        <button class='btn ghost' data-cat-edit='${cat}'>编辑</button>
-        <button class='btn ghost' data-cat-del='${cat}'>删除</button>
+        <button class='btn ghost' data-cat-edit='${catName}'>编辑</button>
+        <button class='btn ghost' data-cat-del='${catName}'>删除</button>
       </td>`;
     tb.appendChild(tr);
   });
   
   $$('[data-cat-edit]').forEach(b=>b.onclick=()=>{
-    const cat=b.dataset.catEdit;
-    $('#cat_name').value=cat;
-    $('#cat_edit_name').value=cat;
+    const catName=b.dataset.catEdit;
+    const catObj = state.categories.find(c => (typeof c === 'string' ? c : c.name) === catName);
+    $('#cat_name').value=catName;
+    $('#cat_aliases').value=typeof catObj === 'object' && catObj.aliases ? catObj.aliases : '';
+    $('#cat_edit_name').value=catName;
     $('#categoryForm').scrollIntoView({behavior:'smooth'});
     $('#cat_name').focus();
   });

@@ -65,19 +65,19 @@ async function loadProfile(profileId, initSample = false) {
     await window.loadCategories();
   }
 
-  if (initSample && state.accounts.length === 0 && state.profileId === 'default') {
-    const a1 = { id: uid(), profileId: state.profileId, name: '现金', type: 'cash', currency: state.prefs.baseCurrency, includeInNetWorth: true, openingBalance: 200, createdAt: new Date().toISOString(), sort: 0 };
-    const a2 = { id: uid(), profileId: state.profileId, name: '银行卡', type: 'bank', currency: state.prefs.baseCurrency, includeInNetWorth: true, openingBalance: 1200, createdAt: new Date().toISOString(), sort: 1 };
-    const a3 = { id: uid(), profileId: state.profileId, name: 'USD 活期', type: 'bank', currency: 'USD', includeInNetWorth: true, openingBalance: 100, createdAt: new Date().toISOString(), sort: 2 };
-    await window.idb.put('accounts', a1); await window.idb.put('accounts', a2); await window.idb.put('accounts', a3);
-    state.accounts = [a1, a2, a3];
-    const t1 = { id: uid(), profileId: state.profileId, date: todayStr(), accountId: a2.id, side: 'out', amount: 35.8, category: '餐饮', payee: '咖啡', memo: '拿铁', createdAt: new Date().toISOString() };
-    await window.idb.put('transactions', t1); state.txs = [t1];
-    if (state.prefs.baseCurrency === 'CNY') {
-      const key = pkey('fx:USD'); const sampleFx = { key, profileId: state.profileId, quote: 'USD', rate: 7.10, updatedAt: new Date().toISOString() };
-      await window.idb.put('fxrates', sampleFx); state.fxrates['USD'] = 7.10;
-    }
-  }
+  // if (initSample && state.accounts.length === 0 && state.profileId === 'default') {
+  //   const a1 = { id: uid(), profileId: state.profileId, name: '现金', type: 'cash', currency: state.prefs.baseCurrency, includeInNetWorth: true, openingBalance: 200, createdAt: new Date().toISOString(), sort: 0 };
+  //   const a2 = { id: uid(), profileId: state.profileId, name: '银行卡', type: 'bank', currency: state.prefs.baseCurrency, includeInNetWorth: true, openingBalance: 1200, createdAt: new Date().toISOString(), sort: 1 };
+  //   const a3 = { id: uid(), profileId: state.profileId, name: 'USD 活期', type: 'bank', currency: 'USD', includeInNetWorth: true, openingBalance: 100, createdAt: new Date().toISOString(), sort: 2 };
+  //   await window.idb.put('accounts', a1); await window.idb.put('accounts', a2); await window.idb.put('accounts', a3);
+  //   state.accounts = [a1, a2, a3];
+  //   const t1 = { id: uid(), profileId: state.profileId, date: todayStr(), accountId: a2.id, side: 'out', amount: 35.8, category: '餐饮', payee: '咖啡', memo: '拿铁', createdAt: new Date().toISOString() };
+  //   await window.idb.put('transactions', t1); state.txs = [t1];
+  //   if (state.prefs.baseCurrency === 'CNY') {
+  //     const key = pkey('fx:USD'); const sampleFx = { key, profileId: state.profileId, quote: 'USD', rate: 7.10, updatedAt: new Date().toISOString() };
+  //     await window.idb.put('fxrates', sampleFx); state.fxrates['USD'] = 7.10;
+  //   }
+  // }
 }
 
 // async function boot() {

@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "我的记账本",
+  "version": "1.0.0",
+  "description": "微信支付宝账单记账本 - 支持多账户、多币种、预算管理",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "action": {
+    "default_title": "打开记账本"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "pic/icon16.png",
+    "48": "pic/icon48.png",
+    "128": "pic/icon128.png"
+  }
+}

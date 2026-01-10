@@ -4,12 +4,19 @@ on:
   push:
     branches: [ main ]
 
+# 允许写入仓库内容（使 GITHUB_TOKEN 可推送 gh-pages）
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # 确保 checkout 保留凭证以便后续步骤使用 GITHUB_TOKEN 推送
+          persist-credentials: true
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3

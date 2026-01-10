@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "我的记账本 (Ledger)",
+  "version": "1.0.0",
+  "description": "个人记账应用，支持多账户、多币种记账、预算管理和数据可视化",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "action": {
+    "default_title": "打开记账本"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "pic/icon-16.png",
+    "48": "pic/icon-48.png",
+    "128": "pic/icon-128.png"
+  }
+}

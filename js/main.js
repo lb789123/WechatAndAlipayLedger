@@ -116,6 +116,18 @@ async function loadProfile(profileId, initSample = false) {
 
 // 暴露到全局
 async function boot() {
+  // ====== Extension Context Detection ======
+  // Detect if running in a browser extension context
+  const isExtension = location.protocol === 'chrome-extension:' || location.protocol === 'moz-extension:';
+  
+  if (isExtension) {
+    // Running as extension: use extension-specific IndexedDB adapter
+    console.log('Extension context detected, using extension IndexedDB adapter');
+    window.idb = window.extensionIdb;
+    window.openDB = window.openExtensionDB;
+  }
+  // ====== End Extension Detection ======
+  
   await window.openDB();
   renderTabs();
   if (window.bindEvents) window.bindEvents();

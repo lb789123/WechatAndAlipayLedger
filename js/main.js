@@ -80,6 +80,41 @@ async function loadProfile(profileId, initSample = false) {
   }
 }
 
+// async function boot() {
+//   await window.openDB();
+//   renderTabs();
+//   if (window.bindEvents) window.bindEvents();
+//   await loadProfile(window.state.profileId, true);
+//   if (window.renderAll) window.renderAll();
+//   if (window.renderCategoriesTable) window.renderCategoriesTable();
+//   console.log('boot finished, binding import/export buttons');
+//   // 绑定导入导出按钮
+//   window.addEventListener('load', () => {
+//     console.log('window load event fired, binding buttons');
+//     const pid = document.querySelector('#dataProfileId');
+//     if (pid && window.state)
+//       pid.textContent = window.state.profileId;
+//     const bx = document.querySelector('#btnExportData');
+//     if (bx)
+//       bx.onclick = window.exportCurrentIdData;
+//     const bi = document.querySelector('#btnImportData');
+//     if (bi)
+//       bi.onclick = () => document.querySelector('#importFile')?.click();
+//     const fi = document.querySelector('#importFile');
+//     if (fi) {
+//       fi.onchange = (e) => {
+//         const f = e.target.files && e.target.files[0];
+//         if (f && window.importCurrentIdDataFromFile) {
+//           window.importCurrentIdDataFromFile(f);
+//         }
+//         e.target.value = '';
+//       };
+//     }
+//     const bc = document.querySelector('#btnClearCurrentData'); if (bc) bc.onclick = window.clearCurrentIdData;
+//   });
+// }
+
+// 暴露到全局
 async function boot() {
   await window.openDB();
   renderTabs();
@@ -87,31 +122,38 @@ async function boot() {
   await loadProfile(window.state.profileId, true);
   if (window.renderAll) window.renderAll();
   if (window.renderCategoriesTable) window.renderCategoriesTable();
-  console.log('boot finished, binding import/export buttons');
-  // 绑定导入导出按钮
-  window.addEventListener('load', () => {
-    console.log('window load event fired, binding buttons');
-    const pid = document.querySelector('#dataProfileId');
-    if (pid && window.state)
-      pid.textContent = window.state.profileId;
-    const bx = document.querySelector('#btnExportData');
-    if (bx)
-      bx.onclick = window.exportCurrentIdData;
-    const bi = document.querySelector('#btnImportData');
-    if (bi)
-      bi.onclick = () => document.querySelector('#importFile')?.click();
-    const fi = document.querySelector('#importFile');
-    if (fi) {
-      fi.onchange = (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (f && window.importCurrentIdDataFromFile) {
-          window.importCurrentIdDataFromFile(f);
-        }
-        e.target.value = '';
-      };
-    }
-    const bc = document.querySelector('#btnClearCurrentData'); if (bc) bc.onclick = window.clearCurrentIdData;
-  });
+
+  // 这里直接绑定导入导出按钮，不再等 window.load
+  const pid = document.querySelector('#dataProfileId');
+  if (pid && window.state) {
+    pid.textContent = window.state.profileId;
+  }
+
+  const bx = document.querySelector('#btnExportData');
+  if (bx) {
+    bx.onclick = window.exportCurrentIdData;
+  }
+
+  const bi = document.querySelector('#btnImportData');
+  if (bi) {
+    bi.onclick = () => document.querySelector('#importFile')?.click();
+  }
+
+  const fi = document.querySelector('#importFile');
+  if (fi) {
+    fi.onchange = (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (f && window.importCurrentIdDataFromFile) {
+        window.importCurrentIdDataFromFile(f);
+      }
+      e.target.value = '';
+    };
+  }
+
+  const bc = document.querySelector('#btnClearCurrentData');
+  if (bc) {
+    bc.onclick = window.clearCurrentIdData;
+  }
 }
 
 // 暴露到全局

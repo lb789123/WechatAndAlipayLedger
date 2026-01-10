@@ -441,11 +441,13 @@ function updateDataProfileId(){
 function renderCategoriesTable(){
   if(!window.state) return;
   const state = window.state;
-  const tb=$('#categoriesTable tbody'); tb.innerHTML='';
+  const tb=$('#categoriesTable tbody'); if(!tb) return;
+  tb.innerHTML='';
   
   state.categories.forEach(cat=>{
+    const aliases = (state.categoryAliases && state.categoryAliases[cat]) ? state.categoryAliases[cat].join(', ') : '';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${cat}</td>
+    tr.innerHTML=`<td>${cat}</td><td>${aliases}</td>
       <td style='text-align:right'>
         <button class='btn ghost' data-cat-edit='${cat}'>编辑</button>
         <button class='btn ghost' data-cat-del='${cat}'>删除</button>
@@ -457,6 +459,10 @@ function renderCategoriesTable(){
     const cat=b.dataset.catEdit;
     $('#cat_name').value=cat;
     $('#cat_edit_name').value=cat;
+    // 回填别名（若表单提供 #cat_aliases input）
+    const aliases = (window.state.categoryAliases && window.state.categoryAliases[cat]) ? window.state.categoryAliases[cat].join(', ') : '';
+    const aliasInput = $('#cat_aliases');
+    if(aliasInput) aliasInput.value = aliases;
     $('#categoryForm').scrollIntoView({behavior:'smooth'});
     $('#cat_name').focus();
   });

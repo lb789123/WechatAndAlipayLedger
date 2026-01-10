@@ -9,12 +9,13 @@ async function exportCurrentIdData(){
   const budgets = (await window.idb.getAll('budgets')).filter(x => x.profileId === profile);
   const fxrates = (await window.idb.getAll('fxrates')).filter(x => x.profileId === profile);
   const categories = await window.idb.getPrefRaw(pkey('categories'));
+  const catAliases = await window.idb.getPrefRaw(pkey('cat_aliases'));
   const prefs = {
     baseCurrency: await window.idb.getPrefRaw(pkey('baseCurrency')),
     maskAmounts: await window.idb.getPrefRaw(pkey('maskAmounts')),
     theme: await window.idb.getPrefRaw(pkey('theme'))
   };
-  const dump = {meta:{app:'ledger-adv', version:'v6.1', profileId:profile, exportedAt:new Date().toISOString()}, accounts, transactions, budgets, fxrates, categories, prefs};
+  const dump = {meta:{app:'ledger-adv', version:'v6.1', profileId:profile, exportedAt:new Date().toISOString()}, accounts, transactions, budgets, fxrates, categories, catAliases, prefs};
   const blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -116,11 +117,15 @@ async function importCurrentIdDataFromFile(file){
       if(typeof applyTheme === 'function') try{ applyTheme(); }catch(_){}
     }
 
-    // 导入分类
+    // 导入分类与别名
     if(data.categories && Array.isArray(data.categories) && data.categories.length > 0){
       await window.idb.setPrefRaw(pkey('categories'), data.categories);
       if(window.state) window.state.categories = data.categories;
       if(window.updateCategorySelects) window.updateCategorySelects();
+    }
+    if(data.catAliases && typeof data.catAliases === 'object'){
+      await window.idb.setPrefRaw(pkey('cat_aliases'), data.catAliases);
+      if(window.state) window.state.categoryAliases = data.catAliases;
     }
 
     if(window.loadProfile) await window.loadProfile(prof);
@@ -145,8 +150,8 @@ async function clearCurrentIdData(){
   };
   await delFromStore('accounts','id');
   await delFromStore('transactions','id');
-  const allB = await window.idb.getAll('budgets'); for(const b of allB.filter(x=>x.profileId===prof)){ await window.idb.del('budgets', b.key); }
-  const allF = await window.idb.getAll('fxrates'); for(const r of allF.filter(x=>x.profileId===prof)){ await window.idb.del('fxrates', r.key); }
+  const allB = await window.idb.getAll('budgets'); for(const b of allB.filter(x=>x.profileId===prof){ await window.idb.del('budgets', b.key); }
+  const allF = await window.idb.getAll('fxrates'); for(const r of allF.filter(x=>x.profileId===prof){ await window.idb.del('fxrates', r.key); }
 
   if(window.loadProfile) await window.loadProfile(prof);
   if(window.renderAll) window.renderAll();

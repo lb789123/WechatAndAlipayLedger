@@ -6,6 +6,7 @@ const state={
   budgets:{}, 
   fxrates:{}, 
   categories:[], // 交易分类列表
+  categoryAliases: {}, // 分类别名映射：{ categoryName: [alias1, alias2, ...] }
   prefs:{
     baseCurrency:'CNY', 
     maskAmounts:false, 

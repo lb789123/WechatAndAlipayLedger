@@ -7,7 +7,7 @@ async function loadCategories(){
   const state = window.state;
   const pkey = window.pkey;
   
-  // 尝试从数据库加载
+  // 尝试从数据库加载分类数组
   const stored = await window.idb.getPrefRaw(pkey('categories'));
   if(stored && Array.isArray(stored) && stored.length > 0){
     state.categories = stored;
@@ -16,6 +16,17 @@ async function loadCategories(){
     state.categories = [...DEFAULT_CATEGORIES];
     // 保存默认分类到数据库
     await window.idb.setPrefRaw(pkey('categories'), state.categories);
+  }
+
+  // 尝试加载分类别名映射（category -> [alias...])
+  const storedAliases = await window.idb.getPrefRaw(pkey('cat_aliases'));
+  if(storedAliases && typeof storedAliases === 'object'){
+    state.categoryAliases = storedAliases;
+  } else {
+    state.categoryAliases = {};
+    // make sure every default category has an array (possibly empty)
+    state.categories.forEach(c => { if(!state.categoryAliases[c]) state.categoryAliases[c] = []; });
+    await window.idb.setPrefRaw(pkey('cat_aliases'), state.categoryAliases);
   }
   
   // 更新分类选择器
@@ -26,23 +37,27 @@ async function loadCategories(){
 function updateCategorySelects(){
   if(!window.state) return;
   const state = window.state;
+  // 过滤掉转账类（如原先逻辑）
   const cats = state.categories.filter(c=>!c.startsWith('转账'));
   const opts = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  $('#tx_category').innerHTML = opts;
-  $('#bdg_category').innerHTML = opts;
+  const txCat = $('#tx_category');
+  if(txCat) txCat.innerHTML = opts;
+  const bdgCat = $('#bdg_category');
+  if(bdgCat) bdgCat.innerHTML = opts;
 }
 
-// 保存分类到数据库
+// 保存分类和别名到数据库
 async function saveCategories(){
   if(!window.state || !window.pkey) return;
   const state = window.state;
   const pkey = window.pkey;
   await window.idb.setPrefRaw(pkey('categories'), state.categories);
+  await window.idb.setPrefRaw(pkey('cat_aliases'), state.categoryAliases || {});
   updateCategorySelects();
 }
 
-// 添加分类
-async function addCategory(name){
+// 添加分类，允许传入 aliases（字符串或数组）
+async function addCategory(name, aliases){
   if(!window.state) return false;
   const state = window.state;
   const trimmed = String(name||'').trim();
@@ -55,6 +70,15 @@ async function addCategory(name){
     return false;
   }
   state.categories.push(trimmed);
+
+  // 处理别名参数
+  let aliasArr = [];
+  if(aliases){
+    if(Array.isArray(aliases)) aliasArr = aliases.map(a=>String(a||'').trim()).filter(Boolean);
+    else aliasArr = String(aliases||'').split(',').map(s=>s.trim()).filter(Boolean);
+  }
+  if(!state.categoryAliases) state.categoryAliases = {};
+  state.categoryAliases[trimmed] = aliasArr;
   await saveCategories();
   return true;
 }
@@ -69,6 +93,8 @@ async function deleteCategory(name){
   const index = state.categories.indexOf(name);
   if(index >= 0){
     state.categories.splice(index, 1);
+    // 删除别名映射
+    if(state.categoryAliases && state.categoryAliases[name]) delete state.categoryAliases[name];
     await saveCategories();
     return true;
   }
@@ -76,7 +102,7 @@ async function deleteCategory(name){
 }
 
 // 编辑分类（重命名）
-async function renameCategory(oldName, newName){
+async function renameCategory(oldName, newName, aliases){
   if(!window.state) return false;
   const state = window.state;
   const trimmed = String(newName||'').trim();
@@ -92,6 +118,18 @@ async function renameCategory(oldName, newName){
   const index = state.categories.indexOf(oldName);
   if(index >= 0){
     state.categories[index] = trimmed;
+    // 迁移别名
+    if(!state.categoryAliases) state.categoryAliases = {};
+    const oldAliases = state.categoryAliases[oldName] || [];
+    delete state.categoryAliases[oldName];
+    // 如果外部传入 aliases 参数，优先使用它
+    if(aliases){
+      let aliasArr = Array.isArray(aliases) ? aliases.map(a=>String(a||'').trim()).filter(Boolean) : String(aliases||'').split(',').map(s=>s.trim()).filter(Boolean);
+      state.categoryAliases[trimmed] = aliasArr;
+    } else {
+      state.categoryAliases[trimmed] = oldAliases;
+    }
+
     await saveCategories();
     
     // 更新所有使用该分类的交易记录和预算
@@ -131,9 +169,84 @@ async function resetCategories(){
   }
   const state = window.state;
   state.categories = [...DEFAULT_CATEGORIES];
+  state.categoryAliases = {};
+  state.categories.forEach(c => state.categoryAliases[c] = []);
   await saveCategories();
   if(window.renderCategoriesTable) window.renderCategoriesTable();
   alert('已重置为默认分类');
+}
+
+// 设置单个分类的别名（覆盖）
+async function setCategoryAliases(category, aliases){
+  if(!window.state) return false;
+  const state = window.state;
+  if(!state.categories.includes(category)) return false;
+  let aliasArr = [];
+  if(Array.isArray(aliases)) aliasArr = aliases.map(a=>String(a||'').trim()).filter(Boolean);
+  else aliasArr = String(aliases||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!state.categoryAliases) state.categoryAliases = {};
+  state.categoryAliases[category] = aliasArr;
+  await saveCategories();
+  return true;
+}
+
+// 获取单个分类的别名数组
+function getCategoryAliases(category){
+  if(!window.state) return [];
+  return (window.state.categoryAliases && window.state.categoryAliases[category]) ? window.state.categoryAliases[category].slice() : [];
+}
+
+// 根据一个原始文本尝试匹配到已有分类（通过名称、别名、子串或 token 匹配）
+function findCategoryByLabel(raw){
+  if(!window.state || !raw) return null;
+  const state = window.state;
+  const s = String(raw).trim();
+  if(!s) return null;
+  const norm = (x) => String(x||'').toLowerCase().replace(/\s+/g,'').replace(/[^\w\u4e00-\u9fa5]/g,'');
+  const input = norm(s);
+
+  // 1) 直接名称匹配（忽略大小写/空白/符号）
+  for(const c of state.categories){
+    if(norm(c) === input) return c;
+  }
+
+  // 2) 别名精确或子串匹配
+  if(state.categoryAliases){
+    for(const [cat, aliases] of Object.entries(state.categoryAliases)){
+      if(!aliases || !aliases.length) continue;
+      for(const a of aliases){
+        const na = norm(a);
+        if(!na) continue;
+        if(na === input) return cat;
+        if(na && input.includes(na)) return cat;
+        if(na.length > 3 && na.split('').some(ch => input.includes(ch))) {
+          // very loose fallback (kept minimal)
+        }
+      }
+    }
+  }
+
+  // 3) token-based matching: split by non-alnum and compare overlap
+  const tokens = input.split(/[^0-9a-z\u4e00-\u9fa5]+/).filter(Boolean);
+  if(tokens.length){
+    const scores = {};
+    for(const c of state.categories){
+      const cname = norm(c);
+      let score = 0;
+      if(cname && tokens.some(t => cname.includes(t))) score += 2;
+      const aliases = (state.categoryAliases && state.categoryAliases[c]) ? state.categoryAliases[c] : [];
+      for(const a of aliases){
+        const na = norm(a);
+        if(na && tokens.some(t => na.includes(t))) score += 2;
+      }
+      if(score > 0) scores[c] = (scores[c]||0) + score;
+    }
+    // pick best score (>=2)
+    const best = Object.entries(scores).sort((a,b)=>b[1]-a[1])[0];
+    if(best && best[1] >= 2) return best[0];
+  }
+
+  return null;
 }
 
 // 暴露到全局
@@ -143,3 +256,6 @@ window.addCategory = addCategory;
 window.deleteCategory = deleteCategory;
 window.renameCategory = renameCategory;
 window.resetCategories = resetCategories;
+window.setCategoryAliases = setCategoryAliases;
+window.getCategoryAliases = getCategoryAliases;
+window.findCategoryByLabel = findCategoryByLabel;

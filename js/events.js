@@ -197,18 +197,24 @@ function bindEvents(){
     $('#cat_name').focus();
     $('#cat_edit_name').value='';
     $('#cat_name').value='';
+    const aliasInput = $('#cat_aliases');
+    if(aliasInput) aliasInput.value = '';
   };
   
   $('#btnCancelCategory').onclick=()=>{
     $('#categoryForm').reset();
     $('#cat_edit_name').value='';
+    const aliasInput = $('#cat_aliases');
+    if(aliasInput) aliasInput.value = '';
   };
   
   $('#categoryForm').onsubmit=async (e)=>{
     e.preventDefault();
     const name=$('#cat_name').value.trim();
     const editName=$('#cat_edit_name').value;
-    
+    const aliasesRaw = ($('#cat_aliases') ? $('#cat_aliases').value : '').trim();
+    const aliases = aliasesRaw ? aliasesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+
     if(!name){
       alert('请输入分类名称');
       return;
@@ -217,7 +223,7 @@ function bindEvents(){
     if(editName){
       // 编辑模式
       if(window.renameCategory){
-        const success = await window.renameCategory(editName, name);
+        const success = await window.renameCategory(editName, name, aliases);
         if(success){
           $('#categoryForm').reset();
           $('#cat_edit_name').value='';
@@ -228,7 +234,7 @@ function bindEvents(){
     } else {
       // 新增模式
       if(window.addCategory){
-        const success = await window.addCategory(name);
+        const success = await window.addCategory(name, aliases);
         if(success){
           $('#categoryForm').reset();
           if(window.renderCategoriesTable) window.renderCategoriesTable();

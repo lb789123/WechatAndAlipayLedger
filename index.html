@@ -555,11 +555,14 @@
   </div>
 
   <!-- 引入 SheetJS，用于读取 xlsx/xls 文件（用于导入流水） -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
+  <script src="js/vendor/xlsx.full.min.js"></script>
+<!-- 添加：扩展作用域的 IndexedDB 适配器（如果运行在扩展上下文，这会创建 window.extensionIdb） -->
+<script src="js/extension-idb.js"></script>
   <!-- 引入所有模块 -->
   <script src="js/utils.js"></script>
   <script src="js/db.js"></script>
+  <!-- Extension IndexedDB adapter - load before main.js to enable extension context detection -->
+  <script src="js/extension-idb.js"></script>
   <script src="js/state.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/fx.js"></script>

@@ -1,10 +1,3 @@
-// Extension-scoped IndexedDB adapter for Ledger app.
-// Safe-guarded: if window.extensionIdb already exists, do nothing (prevents "already declared" issues).
-// All top-level names are contained in the IIFE to avoid leaking globals.
-//
-// DB name: ledger_ext_v1
-// Object stores: accounts (keyPath 'id'), transactions ('id'), budgets ('key'), prefs ('key'), fxrates ('key')
-
 (function(){
   if (window.extensionIdb) {
     // Already loaded/defined - avoid duplicate declaration

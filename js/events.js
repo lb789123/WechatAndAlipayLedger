@@ -354,6 +354,7 @@ function bindEvents(){
   if (btnToggleBudgetForm && budgetFormCard) {
     btnToggleBudgetForm.onclick = () => {
       budgetFormCard.classList.toggle('collapsed');
+      $('#budgetFormWrapper').style.display = budgetFormCard.classList.contains('collapsed') ? 'none' : 'block';
     };
   }
 

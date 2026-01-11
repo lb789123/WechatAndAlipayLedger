@@ -1,7 +1,3 @@
-// ====== 主入口文件 ======
-// Extension context detection: if running as chrome-extension:// or moz-extension://
-// use the extension-scoped IndexedDB adapter to prevent site data clearing from
-// removing user data.
 
 async function ensureExtensionIdbIfNeeded(){
   try{

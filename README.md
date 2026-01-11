@@ -4,7 +4,7 @@
 ## 功能特性
 
 （1）个人账户余额统计，支持定义多个账户，如支付宝、微信、银行卡等等
-（2）交易账单的导入，支持一xlxs的一键导入（仅包含表头，需要手动删掉微信/支付宝导出的前面部分）
+（2）交易账单的导入，支持**xlsx的一键导入（仅包含表头，需要手动删掉微信/支付宝导出的前面部分）**
 （3）交易分类自定义（支持多种交易分类的自定义、模糊定义、模糊查询）交易分类自定义（支持多种交易分类的自定义、模糊定义、模糊查询）
 （4）整体数据导入/导出保存
 （5）每个月收支情况的报表、预算查看、每个月的消费查询、交易明细查看
@@ -78,4 +78,21 @@ ledger/
     └── main.js         # 主入口文件
 ```
 
-使用的情况截图：
+## 使用的情况截图：
+<img width="1745" height="750" alt="image" src="https://github.com/user-attachments/assets/68eb08aa-c077-4e5e-b094-d1f193ee9600" />
+<img width="714" height="291" alt="image" src="https://github.com/user-attachments/assets/dd0e26ff-97d1-4a63-b0c7-07962f51b83e" />
+<img width="1625" height="1169" alt="ScreenShot_2026-01-10_220719_351" src="https://github.com/user-attachments/assets/a311afc2-5320-4911-ae57-5aa9a146afef" />
+<img width="1681" height="1210" alt="ScreenShot_2026-01-10_220732_115" src="https://github.com/user-attachments/assets/3507b2b7-45f9-45ad-bc58-7fef4e50d5dd" />
+<img width="1526" height="1283" alt="各分类下的消费情况，及月度消费查询" src="https://github.com/user-attachments/assets/d43d3955-badf-4efa-b436-769a732211d9" />
+<img width="1561" height="395" alt="数据导出与导入，与清空" src="https://github.com/user-attachments/assets/d04cc5d4-a458-482b-9b0e-00067841494d" />
+<img width="1610" height="1280" alt="账户余额" src="https://github.com/user-attachments/assets/0f2e6b02-55ed-417a-b7e5-ae80184edd63" />
+<img width="1595" height="1026" alt="新增交易记录" src="https://github.com/user-attachments/assets/3e073caa-ebae-4648-8034-08e2ec695efa" />
+<img width="1479" height="1193" alt="交易分类" src="https://github.com/user-attachments/assets/2c1f4973-294c-45f1-a5f9-4f98da380983" />
+<img width="1631" height="1084" alt="年度消费趋势" src="https://github.com/user-attachments/assets/cd51852a-5912-475b-aa36-90d43733b343" />
+<img width="1489" height="1115" alt="导入交易记录" src="https://github.com/user-attachments/assets/3eff6712-6056-4963-b5e6-bb689b02df4c" />
+
+
+## 新增功能调整
+（1）预算考虑收入和支出的总和，并可以进行月度、年度查看
+（2）各分类下的消费情况，及月度消费查询
+（3）各交易记录支持修改

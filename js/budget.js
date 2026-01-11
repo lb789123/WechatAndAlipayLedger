@@ -30,6 +30,7 @@ function startEditBudget(cat){
       }
   if(!window.pkey) return;
   const pkey = window.pkey;
+  $('#budgetFormWrapper').style.display = 'block';
   $('#bdg_edit_key').value=pkey('bdg:'+cat);
   $('#bdg_category').value=cat;
   if(window.state) $('#bdg_amount').value=window.state.budgets[cat]||0;
@@ -45,7 +46,7 @@ function endEditBudget(){
   $('#bdg_edit_key').value='';
     const form = document.getElementById('budgetForm');
    if (form) form.reset();
-   
+
   $('#bdgEditingPill').parentElement.classList.remove('editing');
   $('#bdgEditingPill').style.display='none';
   $('#btnCancelEditBudget').style.display='none';
@@ -53,7 +54,8 @@ function endEditBudget(){
     // 结束编辑后收起预算设置卡片
     const budgetFormCard = $('#budgetFormCard');
     if (budgetFormCard) {
-      budgetFormCard.classList.add('collapsed');    
+      budgetFormCard.classList.add('collapsed'); 
+        $('#budgetFormWrapper').style.display = 'none';  
     }
 }
 

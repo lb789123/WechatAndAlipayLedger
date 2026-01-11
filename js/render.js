@@ -590,8 +590,8 @@ function showBudgetDetail(category, month, viewMode = 'month'){
     detailTable.appendChild(tr);
   }
   
-  // 显示净支出合计
-  detailTotal.textContent = fmtAmount(total, state.prefs.baseCurrency);
+  // 显示净额合计（income - expense，负值表示净支出）
+  detailTotal.textContent = fmtAmount(-total, state.prefs.baseCurrency);
   detailCard.style.display = 'block';
   
   // 滚动到明细区域

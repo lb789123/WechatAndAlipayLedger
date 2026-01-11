@@ -82,6 +82,35 @@ function bindEvents(){
   $('#btnResetBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   $('#btnCancelEditBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   
+  // 预算表单折叠/展开按钮
+  const btnToggleBudgetForm = $('#btnToggleBudgetForm');
+  const budgetFormCard = $('#budgetFormCard');
+  const budgetFormHeader = $('#budgetFormHeader');
+  if(btnToggleBudgetForm && budgetFormCard){
+    // 点击按钮切换
+    btnToggleBudgetForm.onclick = (e)=>{
+      e.stopPropagation();
+      budgetFormCard.classList.toggle('collapsed');
+    };
+    // 点击头部也可以切换
+    if(budgetFormHeader){
+      budgetFormHeader.onclick = ()=>{
+        budgetFormCard.classList.toggle('collapsed');
+      };
+    }
+  }
+  
+  // 预算视图模式选择器
+  const budgetViewModeSelector = $('#budgetViewMode');
+  if(budgetViewModeSelector){
+    budgetViewModeSelector.onchange = (e)=>{
+      const viewMode = e.target.value;
+      const monthValue = $('#budgetMonthSelector').value;
+      if(window.renderBudget) window.renderBudget(monthValue, viewMode);
+      if(window.closeBudgetDetail) window.closeBudgetDetail();
+    };
+  }
+  
   // 预算月份选择器
   const budgetMonthSelector = $('#budgetMonthSelector');
   if(budgetMonthSelector){
@@ -93,8 +122,9 @@ function bindEvents(){
     
     budgetMonthSelector.onchange = (e)=>{
       const monthValue = e.target.value;
+      const viewMode = budgetViewModeSelector ? budgetViewModeSelector.value : 'month';
       if(monthValue){
-        if(window.renderBudget) window.renderBudget(monthValue);
+        if(window.renderBudget) window.renderBudget(monthValue, viewMode);
         // 关闭已打开的明细
         if(window.closeBudgetDetail) window.closeBudgetDetail();
       }
@@ -108,7 +138,8 @@ function bindEvents(){
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       budgetMonthSelector.value = `${year}-${month}`;
-      if(window.renderBudget) window.renderBudget(null);
+      const viewMode = budgetViewModeSelector ? budgetViewModeSelector.value : 'month';
+      if(window.renderBudget) window.renderBudget(null, viewMode);
       if(window.closeBudgetDetail) window.closeBudgetDetail();
     }
   };

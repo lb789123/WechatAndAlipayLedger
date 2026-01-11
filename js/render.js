@@ -381,12 +381,14 @@ function renderTxTable(){
 //   });
 // }
 
-function renderBudget(targetMonth = null){
+// renderBudget now supports both monthly and yearly views
+// viewMode: 'month' (default) or 'year'
+function renderBudget(targetMonth = null, viewMode = 'month'){
   if(!window.state) return;
   const state = window.state;
   
-  // 确定目标月份
-  let targetDate;
+  // 确定目标日期和范围
+  let targetDate, periodStr, startDate, endDate;
   if(targetMonth){
     // targetMonth 格式可能是 "2024-01" 或已经是日期字符串
     const monthStr = typeof targetMonth === 'string' && targetMonth.match(/^\d{4}-\d{2}$/) 
@@ -396,45 +398,96 @@ function renderBudget(targetMonth = null){
   } else {
     targetDate = new Date();
   }
-  const monthStr = ym(targetDate);
-  $('#budgetMonthLabel').textContent = `月份：${monthStr}`;
   
-  // 设置月份选择器的值（如果存在且未被用户手动设置）
+  if(viewMode === 'year'){
+    // 年度视图：使用整年范围
+    const year = targetDate.getFullYear();
+    periodStr = `${year}`;
+    startDate = `${year}-01-01`;
+    endDate = `${year}-12-31`;
+  } else {
+    // 月度视图：使用单个月份
+    const monthStr = ym(targetDate);
+    periodStr = monthStr;
+    const year = targetDate.getFullYear();
+    const month = targetDate.getMonth() + 1;
+    startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    // 计算月末日期
+    const nextMonth = new Date(year, month, 1);
+    const lastDay = new Date(nextMonth - 1).getDate();
+    endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+  }
+  
+  $('#budgetMonthLabel').textContent = viewMode === 'year' ? `年份：${periodStr}` : `月份：${periodStr}`;
+  
+  // 设置月份选择器的值（仅月度模式）
   const monthInput = $('#budgetMonthSelector');
-  if(monthInput){
+  if(monthInput && viewMode === 'month'){
     const year = targetDate.getFullYear();
     const month = String(targetDate.getMonth() + 1).padStart(2, '0');
     const newValue = `${year}-${month}`;
-    // 只在值不同时更新，避免触发change事件
     if(monthInput.value !== newValue){
       monthInput.value = newValue;
     }
   }
   
   const wrap=$('#budgetGrid'); wrap.innerHTML='';
-  const spent={};
+  const netExpense={}; // 存储净支出（支出-收入）
   
-  // 筛选指定月份的交易
+  // 筛选指定时间范围的交易，计算净支出
+  // 对于每个分类，计算 netSum = sum(expenses) - sum(incomes)
+  // used = max(0, netSum) 表示实际使用的预算
   state.txs.filter(t=>{
-    if(t.side!=='out' || t.isTransfer) return false;
-    return sameMonth(t.date, targetDate);
+    if(t.isTransfer) return false; // 排除转账
+    // 根据视图模式筛选时间范围
+    const tDate = t.date || '';
+    return tDate >= startDate && tDate <= endDate;
   }).forEach(t=>{
     const acc=state.accounts.find(a=>a.id===t.accountId); if(!acc) return;
     const v=amountToBase(t.amount,acc.currency); if(v===null) return;
-    const c=t.category||'其他'; spent[c]=(spent[c]||0)+v;
+    const c=t.category||'其他';
+    if(!netExpense[c]) netExpense[c] = 0;
+    // 支出为负，收入为正（反向累加以计算净支出）
+    if(t.side === 'out'){
+      netExpense[c] += v; // 增加支出
+    } else if(t.side === 'in'){
+      netExpense[c] -= v; // 减少支出（收入抵消支出）
+    }
   });
   
-  const categories=[...new Set([...Object.keys(state.budgets), ...Object.keys(spent)])];
+  // used amount = max(0, netExpense) 确保非负
+  const usedAmounts = {};
+  Object.keys(netExpense).forEach(c=>{
+    usedAmounts[c] = Math.max(0, netExpense[c]);
+  });
+  
+  const categories=[...new Set([...Object.keys(state.budgets), ...Object.keys(usedAmounts)])];
   categories.forEach(c=>{
-    const bAmt=Number(state.budgets[c]||0), sAmt=Number(spent[c]||0);
-    const pct=bAmt>0? Math.min(100, Math.round(sAmt/bAmt*100)) : 0;
+    const bAmt = viewMode === 'year' ? Number(state.budgets[c]||0) * 12 : Number(state.budgets[c]||0);
+    const sAmt = Number(usedAmounts[c]||0);
+    const pct = bAmt>0 ? Math.min(100, Math.round(sAmt/bAmt*100)) : 0;
+    
+    // 根据百分比确定颜色类
+    let barColorClass = 'budget-bar-good'; // < 50%
+    if(pct >= 90){
+      barColorClass = 'budget-bar-danger'; // >= 90%
+    } else if(pct >= 50){
+      barColorClass = 'budget-bar-warn'; // 50% - 89%
+    }
+    
     const card=document.createElement('div'); card.className='card';
     card.style.cursor='pointer';
     card.dataset.category=c;
-    card.dataset.month=monthStr;
+    card.dataset.period=periodStr;
+    card.dataset.viewMode=viewMode;
     card.innerHTML=`<div class='content'>
       <div class='row'><strong>${c}</strong><span class='space'></span><span class='muted'>预算：${fmtAmount(bAmt,state.prefs.baseCurrency)}</span></div>
-      <div class='row' style='margin-top:6px'><div class='progress' style='flex:1'><i style='width:${pct}%'></i></div> <span class='pill'>${pct}%</span></div>
+      <div class='row' style='margin-top:8px'>
+        <div class='budget-bar-outer' style='flex:1'>
+          <div class='budget-bar-inner ${barColorClass}' style='width:${pct}%'></div>
+        </div>
+        <span class='pill'>${pct}%</span>
+      </div>
       <div class='row' style='margin-top:6px'><span class='muted'>已用：</span><strong class='amount negative'>-${fmtAmount(sAmt,state.prefs.baseCurrency)}</strong><span class='space'></span><span class='muted'>剩余：</span><strong>${fmtAmount(Math.max(0,bAmt-sAmt),state.prefs.baseCurrency)}</strong></div>
       <div class='row' style='margin-top:8px;justify-content:flex-end;gap:8px'>
         <button class='btn ghost' data-bdg-edit='${c}'>编辑</button>
@@ -444,9 +497,8 @@ function renderBudget(targetMonth = null){
     
     // 添加点击事件显示交易明细
     card.addEventListener('click', (e)=>{
-      // 如果点击的是按钮，不触发卡片点击
       if(e.target.closest('button')) return;
-      showBudgetDetail(c, monthStr);
+      showBudgetDetail(c, periodStr, viewMode);
     });
     
     wrap.appendChild(card);
@@ -467,20 +519,37 @@ function renderBudget(targetMonth = null){
   });
 }
 
-// 显示预算分类的交易明细
-function showBudgetDetail(category, month){
+// 显示预算分类的交易明细（支持月度和年度视图）
+function showBudgetDetail(category, period, viewMode = 'month'){
   if(!window.state) return;
   const state = window.state;
   
-  // 解析月份
-  const [year, monthNum] = month.split('-');
-  const targetDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+  // 确定时间范围
+  let startDate, endDate, titlePeriod;
+  if(viewMode === 'year'){
+    // 年度视图
+    const year = parseInt(period);
+    startDate = `${year}-01-01`;
+    endDate = `${year}-12-31`;
+    titlePeriod = `${year}年`;
+  } else {
+    // 月度视图
+    const [year, monthNum] = period.split('-');
+    const targetDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+    const month = targetDate.getMonth() + 1;
+    startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const nextMonth = new Date(parseInt(year), month, 1);
+    const lastDay = new Date(nextMonth - 1).getDate();
+    endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+    titlePeriod = period;
+  }
   
-  // 筛选该分类在该月份的所有交易
+  // 筛选该分类在该时间范围的所有交易（包含收入和支出）
   const transactions = state.txs.filter(t=>{
-    if(t.side!=='out' || t.isTransfer) return false;
+    if(t.isTransfer) return false;
     if((t.category||'其他') !== category) return false;
-    return sameMonth(t.date, targetDate);
+    const tDate = t.date || '';
+    return tDate >= startDate && tDate <= endDate;
   }).sort((a,b)=>b.date.localeCompare(a.date));
   
   // 显示明细卡片
@@ -489,36 +558,49 @@ function showBudgetDetail(category, month){
   const detailTable = $('#budgetDetailTable tbody');
   const detailTotal = $('#budgetDetailTotal');
   
-  detailTitle.textContent = `${category} - ${month} 交易明细`;
+  detailTitle.textContent = `${category} - ${titlePeriod} 交易明细`;
   detailTable.innerHTML = '';
   
-  let total = 0;
+  let totalExpense = 0;
+  let totalIncome = 0;
   transactions.forEach(t=>{
     const acc = state.accounts.find(a=>a.id===t.accountId);
     const baseAmount = amountToBase(t.amount, acc ? acc.currency : state.prefs.baseCurrency);
+    
     if(baseAmount !== null){
-      total += baseAmount;
+      if(t.side === 'out'){
+        totalExpense += baseAmount;
+      } else if(t.side === 'in'){
+        totalIncome += baseAmount;
+      }
     }
     
     const tr = document.createElement('tr');
-    const baseAmt = baseAmount !== null ? baseAmount : 0;
+    const sign = t.side === 'in' ? '+' : '-';
+    const amtClass = t.side === 'in' ? 'positive' : 'negative';
     tr.innerHTML = `
       <td>${t.date}</td>
       <td>${acc ? acc.name : ''}</td>
       <td>${t.payee || ''}</td>
       <td>${t.memo || ''}</td>
-      <td style='text-align:right' class='amount negative'>-${fmtAmount(t.amount, acc ? acc.currency : state.prefs.baseCurrency)}${baseAmount !== null && acc && acc.currency !== state.prefs.baseCurrency ? ` <span class='note'>(≈${fmtAmount(baseAmount, state.prefs.baseCurrency)})</span>` : ''}</td>
+      <td style='text-align:right' class='amount ${amtClass}'>${sign}${fmtAmount(t.amount, acc ? acc.currency : state.prefs.baseCurrency)}${baseAmount !== null && acc && acc.currency !== state.prefs.baseCurrency ? ` <span class='note'>(≈${fmtAmount(baseAmount, state.prefs.baseCurrency)})</span>` : ''}</td>
     `;
     detailTable.appendChild(tr);
   });
   
   if(transactions.length === 0){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan='5' style='text-align:center;color:var(--muted)'>该月该分类暂无交易记录</td>`;
+    tr.innerHTML = `<td colspan='5' style='text-align:center;color:var(--muted)'>该时期该分类暂无交易记录</td>`;
     detailTable.appendChild(tr);
   }
   
-  detailTotal.textContent = fmtAmount(total, state.prefs.baseCurrency);
+  // 显示净支出（支出 - 收入）
+  const netExpense = totalExpense - totalIncome;
+  detailTotal.innerHTML = `
+    支出：<span class='amount negative'>${fmtAmount(totalExpense, state.prefs.baseCurrency)}</span> · 
+    收入：<span class='amount positive'>${fmtAmount(totalIncome, state.prefs.baseCurrency)}</span> · 
+    净支出：<strong class='amount ${netExpense >= 0 ? 'negative' : 'positive'}'>${fmtAmount(netExpense, state.prefs.baseCurrency)}</strong>
+  `;
   detailCard.style.display = 'block';
   
   // 滚动到明细区域

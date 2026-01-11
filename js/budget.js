@@ -24,6 +24,11 @@ function startEditBudget(cat){
   $('#bdgEditingPill').parentElement.classList.add('editing');
   $('#bdgEditingPill').style.display='inline-flex';
   $('#btnCancelEditBudget').style.display='inline-block';
+  // 展开预算表单
+  const budgetFormCard = document.getElementById('budgetFormCard');
+  if(budgetFormCard){
+    budgetFormCard.classList.remove('collapsed');
+  }
   $('#sec-budget').classList.add('active');
   $$('#tabs button').forEach(btn=>btn.classList.toggle('active', btn.dataset.target==='#sec-budget'));
   $('#bdg_amount').focus();
@@ -35,6 +40,11 @@ function endEditBudget(){
   $('#bdgEditingPill').parentElement.classList.remove('editing');
   $('#bdgEditingPill').style.display='none';
   $('#btnCancelEditBudget').style.display='none';
+  // 可选：折叠预算表单
+  const budgetFormCard = document.getElementById('budgetFormCard');
+  if(budgetFormCard){
+    budgetFormCard.classList.add('collapsed');
+  }
 }
 
 async function deleteBudget(cat){

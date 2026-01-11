@@ -65,7 +65,9 @@ function renderTabs() {
       if (t.id === 'dashboard' && window.renderAcctDonut) { window.renderAcctDonut(); }
       if (t.id === 'budget' && window.renderBudget) {
         if (window.closeBudgetDetail) window.closeBudgetDetail();
-        window.renderBudget(null);
+        const viewModeSelector = document.getElementById('budgetViewMode');
+        const viewMode = viewModeSelector ? viewModeSelector.value : 'month';
+        window.renderBudget(null, viewMode);
       }
     };
     nav.appendChild(btn);

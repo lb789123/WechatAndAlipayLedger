@@ -164,8 +164,16 @@ function onPieHover(e){
   if(dist>R){ t.style.display='none'; return; }
   let ang=Math.atan2(dy,dx);
   // Normalize angle to match pie start position (-PI/2)
-  if(ang< 0){ ang+=2*Math.PI; }
-  const hit=arcs.find(a=> ang>=a.start && ang<a.end);
+  // Pie starts at -PI/2, so adjust angle to match that coordinate system
+  ang = (ang + Math.PI/2 + 2*Math.PI) % (2*Math.PI);
+  const hit=arcs.find(a=> {
+    let aStart = (a.start + Math.PI/2 + 2*Math.PI) % (2*Math.PI);
+    let aEnd = (a.end + Math.PI/2 + 2*Math.PI) % (2*Math.PI);
+    if(aEnd < aStart) aEnd += 2*Math.PI;
+    let testAng = ang;
+    if(testAng < aStart) testAng += 2*Math.PI;
+    return testAng >= aStart && testAng < aEnd;
+  });
   if(!hit){ t.style.display='none'; return; }
   const base=state.prefs.baseCurrency;
   const html=`<div class="title">${hit.label}</div>

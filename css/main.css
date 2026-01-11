@@ -101,9 +101,9 @@ tr.drop-target{outline:2px dashed var(--primary)}
 
 /* Budget form collapsible */
 #budgetFormCard.collapsed #budgetFormWrapper{display:none}
-#btnToggleBudgetForm{position:relative}
-#budgetFormCard.collapsed #btnToggleBudgetForm::before{content:'▶';position:absolute;left:0}
-#budgetFormCard:not(.collapsed) #btnToggleBudgetForm::before{content:'▼';position:absolute;left:0}
+#btnToggleBudgetForm{position:relative;min-width:32px}
+#budgetFormCard.collapsed #btnToggleBudgetForm::after{content:'▶'}
+#budgetFormCard:not(.collapsed) #btnToggleBudgetForm::after{content:'▼'}
 
 /* Budget progress bars */
 .budget-card{position:relative}

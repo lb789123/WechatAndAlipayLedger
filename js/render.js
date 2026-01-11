@@ -10,6 +10,40 @@ function renderAll(){
   fillFilterCategorySelect();//更新分类筛选
   updateDataProfileId();
 }
++
++// 计算某分类在指定范围内的预算已用额度（支出为负、收入为正，取净支出的正值）
++function calcBudgetUsedForCategory(cat, year, monthOrNullForYearView) {
+  if (!window.state) return 0;
+  const state = window.state;
+
+  const isYearView = (monthOrNullForYearView == null);
+  let usedNet = 0;
+
+  state.txs
+    .filter(t => !t.isTransfer && t.category === cat)
+    .forEach(t => {
+      const d = new Date(t.date);
+     if (isNaN(d)) return;
+
+      if (d.getFullYear() !== year) return;
+
+      if (!isYearView) {
+        if ((d.getMonth() + 1) !== monthOrNullForYearView) return;
+      }
+
+      const acc = state.accounts.find(a => a.id === t.accountId);
+     if (!acc) return;
+      const v = amountToBase(t.amount, acc.currency);
+      if (v === null) return;
+
+     if (t.side === 'out') usedNet -= v;
+      else if (t.side === 'in') usedNet += v;
+    });
+
+  return Math.max(0, -usedNet);
+}
+
+
 function fillFilterCategorySelect(){
   if(!window.state) return;
   const sel = $('#filter_category');
@@ -79,6 +113,96 @@ function renderDashboard(){
   });
 
   renderAcctDonut();
+  
+  // 本月收支圆盘
+  const ie = currentMonthIncomeExpense();
+  const iePieNote = $('#iePieNote');
+  if (iePieNote && window.state) {
+    iePieNote.textContent = `月份：${ym(new Date())} · 基准：${window.state.prefs.baseCurrency}`;
+  }
+  const ieCnv = $('#iePieChart');
+  if (ieCnv) {
+    if (ie.labels.length && ie.values.length) {
+      drawIEPieChart(ieCnv, ie.labels, ie.values);
+    } else {
+      const ctx = ieCnv.getContext('2d');
+      ctx.clearRect(0, 0, ieCnv.width, ieCnv.height);
+    }
+  }
+}
+
+// 本月收入/支出统计（基准）
+function currentMonthIncomeExpense() {
+  if (!window.state) return { labels: [], values: [] };
+  const state = window.state;
+  const now = new Date();
+  let inc = 0;
+  let exp = 0;
+
+  state.txs
+    .filter(t => !t.isTransfer && sameMonth(t.date, now))
+    .forEach(t => {
+      const acc = state.accounts.find(a => a.id === t.accountId);
+      if (!acc) return;
+      const v = amountToBase(t.amount, acc.currency);
+      if (v === null) return;
+      if (t.side === 'in') inc += v;
+      if (t.side === 'out') exp += v;
+    });
+
+  const labels = [];
+  const values = [];
+  if (inc > 0) { labels.push('收入'); values.push(inc); }
+  if (exp > 0) { labels.push('支出'); values.push(exp); }
+  return { labels, values };
+}
+
+function drawIEPieChart(cnv, labels, values) {
+  if (!cnv) return;
+  const dpr = setCanvasSizePlot(cnv);
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+
+  const W = cnv.width, H = cnv.height;
+  const R = Math.min(W, H) / 2 - 30 * dpr;
+  const cx = W / 2, cy = H / 2;
+  const sum = values.reduce((a, b) => a + b, 0) || 1;
+  let start = -Math.PI / 2;
+
+  labels.forEach((lb, i) => {
+    const v = values[i];
+    const ang = 2 * Math.PI * (v / sum);
+    let color = '#31c48d';
+    if (lb === '收入') color = '#f05252';
+    if (lb === '支出') color = '#31c48d';
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, start, start + ang);
+    ctx.closePath();
+    ctx.fill();
+
+    start += ang;
+  });
+
+  const muted = getComputedStyle(document.body).getPropertyValue('--muted') || '#9fb3c8';
+  const text = getComputedStyle(document.body).getPropertyValue('--text') || '#e7edf3';
+  ctx.fillStyle = text;
+  ctx.font = `${12 * dpr}px system-ui`;
+  let ly = 20 * dpr;
+  labels.forEach((lb, i) => {
+    let color = '#31c48d';
+    if (lb === '收入') color = '#f05252';
+    if (lb === '支出') color = '#31c48d';
+    ctx.fillStyle = color;
+    ctx.fillRect(20 * dpr, ly - 8 * dpr, 10 * dpr, 10 * dpr);
+    ctx.fillStyle = muted;
+    const val = values[i];
+    const pct = ((val / sum) * 100).toFixed(1);
+    ctx.fillText(`${lb} · ${val.toFixed(2)} (${pct}%)`, 36 * dpr, ly);
+    ly += 18 * dpr;
+  });
 }
 
 // ====== 圆环图 ======
@@ -348,38 +472,118 @@ function renderTxTable(){
     }
   });
 }
-// function renderTxTable(){
-//   if(!window.state) return;
-//   const state = window.state;
-//   const acct=$('#filter_account').value; const kw=$('#filter_kw').value.trim().toLowerCase();
-//   const tb=$('#txTable tbody'); tb.innerHTML='';
-//   let list=[...state.txs];
-//   if(acct) list=list.filter(t=>t.accountId===acct);
-//   if(kw) list=list.filter(t=> (t.category||'').toLowerCase().includes(kw) || (t.payee||'').toLowerCase().includes(kw) || (t.memo||'').toLowerCase().includes(kw));
-//   list.sort((a,b)=>b.date.localeCompare(a.date));
-//   list.forEach(t=>{
-//     const acc=state.accounts.find(a=>a.id===t.accountId);
-//     const tr=document.createElement('tr');
-//     tr.innerHTML=`<td>${t.date}</td><td>${acc?acc.name:''}</td><td>${t.isTransfer? '转账':(t.side==='in'?'收入':'支出')}</td>
-//       <td>${t.category||''}${t.payee? ' · '+t.payee:''}</td><td>${t.memo||''}</td>
-//       <td style='text-align:right' class='amount ${t.side==='in'?'positive':'negative'}'>${(t.side==='in'?'+':'-')+fmtAmount(t.amount,acc?acc.currency:state.prefs.baseCurrency)}</td>
-//       <td style='text-align:right'>
-//         <button class='btn ghost' data-edit-tx='${t.id}'>编辑</button>
-//         <button class='btn ghost' data-rm='${t.id}'>删除</button>
-//       </td>`;
-//     tb.appendChild(tr);
-//   });
-//   $$('[data-rm]').forEach(b=>b.onclick=async ()=>{
-//     const t=state.txs.find(x=>x.id===b.dataset.rm); if(!t) return;
-//     if(t.isTransfer && t.transferPeerId){ await window.idb.del('transactions',t.transferPeerId); state.txs=state.txs.filter(x=>x.id!==t.transferPeerId); }
-//     await window.idb.del('transactions',t.id); state.txs=state.txs.filter(x=>x.id!==t.id); 
-//     if(window.renderAll) window.renderAll();
-//   });
-//   $$('[data-edit-tx]').forEach(b=>b.onclick=()=>{
-//     const t=state.txs.find(x=>x.id===b.dataset.editTx); if(!t) return;
-//     if(window.startEditTx) window.startEditTx(t);
-//   });
-// }
+
+// 预算渲染：支持按月/按年视图 + 退款计入 + 进度条颜色
+function renderBudget(targetMonth = null, viewMode = 'month') {
+  if (!window.state) return;
+  const state = window.state;
+  const grid = $('#budgetGrid');
+  const labelEl = $('#budgetMonthLabel');
+  if (!grid) return;
+
+  const now = new Date();
+  let year, month;
+
+  if (targetMonth) {
+    const parts = String(targetMonth).split('-');
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1] || (now.getMonth() + 1), 10);
+  } else {
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+
+  const firstDay = new Date(year, month - 1, 1);
+
+  if (viewMode === 'year') {
+    if (labelEl) labelEl.textContent = `${year} 年预算视图`;
+  } else {
+    if (labelEl) labelEl.textContent = `${ym(firstDay)} 月预算视图`;
+  }
+
+  grid.innerHTML = '';
+
+  const cats = Object.keys(state.budgets || {}).sort();
+  if (!cats.length) {
+    grid.innerHTML = `<div class="muted" style="padding:8px 0">当前没有设置任何预算。</div>`;
+    return;
+  }
+
+  cats.forEach(cat => {
+    const budgetBase = Number(state.budgets[cat]) || 0;
+    const monthForCalc = (viewMode === 'year') ? null : month;
+    const used = calcBudgetUsedForCategory(cat, year, monthForCalc);
+    const pct = budgetBase > 0 ? used / budgetBase : 0;
+
+    let barColor = getComputedStyle(document.body).getPropertyValue('--positive') || '#31c48d';
+    if (pct >= 0.9) {
+      barColor = getComputedStyle(document.body).getPropertyValue('--negative') || '#f05252';
+    } else if (pct >= 0.5) {
+      barColor = getComputedStyle(document.body).getPropertyValue('--warn') || '#f59e0b';
+    }
+
+    const percentDisplay = budgetBase > 0 ? `${Math.min(pct, 1) * 100}` : '--';
+    const percentText = (percentDisplay === '--') ? '--' : `${Number(percentDisplay).toFixed(0)}%`;
+
+    const card = document.createElement('div');
+    card.className = 'card budget-card';
+
+    const periodLabel = (viewMode === 'year') ? `${year} 年` : ym(firstDay);
+
+    card.innerHTML = `
+      <div class="content">
+        <div class="row">
+          <h4>${cat}</h4>
+          <div class="space"></div>
+          <span class="note">${periodLabel} · 预算：${fmtAmount(budgetBase)}</span>
+        </div>
+        <div class="row" style="margin-top:6px;align-items:center;gap:8px">
+          <div class="budget-bar-outer">
+            <div class="budget-bar-inner" style="width:${Math.min(pct, 1) * 100}%;background:${barColor};"></div>
+          </div>
+          <span class="note" style="min-width:40px;text-align:right">${percentText}</span>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <span class="muted">已用：${fmtAmount(used)} / 预算：${fmtAmount(budgetBase)}</span>
+        </div>
+        <div class="row" style="margin-top:8px;gap:8px">
+          <button class="btn ghost" data-bdg-detail="${cat}">查看明细</button>
+          <div class="space"></div>
+          <button class="btn" data-bdg-edit="${cat}">编辑</button>
+          <button class="btn negative" data-bdg-del="${cat}">删除</button>
+        </div>
+      </div>
+    `;
+
+    const btnDetail = card.querySelector('[data-bdg-detail]');
+    const btnEdit = card.querySelector('[data-bdg-edit]');
+    const btnDel = card.querySelector('[data-bdg-del]');
+
+    if (btnDetail) {
+      btnDetail.onclick = (e) => {
+        e.stopPropagation();
+        if (window.showBudgetDetail) {
+          const key = (viewMode === 'year') ? String(year) : ym(firstDay);
+          window.showBudgetDetail(cat, key);
+        }
+      };
+    }
+    if (btnEdit) {
+      btnEdit.onclick = (e) => {
+        e.stopPropagation();
+        if (window.startEditBudget) window.startEditBudget(cat);
+      };
+    }
+    if (btnDel) {
+      btnDel.onclick = (e) => {
+        e.stopPropagation();
+        if (window.deleteBudget) window.deleteBudget(cat);
+      };
+    }
+
+    grid.appendChild(card);
+  });
+}
 
 function renderBudget(targetMonth = null){
   if(!window.state) return;

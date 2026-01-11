@@ -3,6 +3,8 @@
   --primary:#4c8bf5; --positive:#16a34a; --negative:#ef4444; --warn:#f59e0b;
   --border:#243140; --shadow:0 6px 18px rgba(0,0,0,.25);
   --tooltip-bg:rgba(20,24,33,.95); --tooltip-text:#e7edf3; --tooltip-border:#2b394a;
+  /* 新增 warn 颜色（如已有可调整/合并） */
+  --warn: #f59e0b;
 }
 body.light{
   --bg:#f5f7fb; --panel:#ffffff; --panel-2:#f2f5fb; --text:#0e1520; --muted:#5a6b7d;
@@ -10,6 +12,25 @@ body.light{
   --border:#d8e0ea; --shadow:0 6px 18px rgba(0,0,0,.08);
   --tooltip-bg:rgba(255,255,255,.98); --tooltip-text:#0e1520; --tooltip-border:#c7d2e0;
 }
+/* 预算卡进度条样式 */
+.budget-card .budget-bar-outer {
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--border);
+   }
+  
+  .budget-card .budget-bar-inner {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+  
+  /* 预算表单折叠 */
+  #budgetFormCard.collapsed #budgetFormWrapper {
+    display: none;
+  }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif;background:var(--bg);color:var(--text)}

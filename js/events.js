@@ -83,34 +83,45 @@ function bindEvents(){
   $('#btnCancelEditBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   
   // 预算月份选择器
-  const budgetMonthSelector = $('#budgetMonthSelector');
-  if(budgetMonthSelector){
-    // 设置默认值为当前月
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    budgetMonthSelector.value = `${year}-${month}`;
-    
-    budgetMonthSelector.onchange = (e)=>{
-      const monthValue = e.target.value;
-      if(monthValue){
-        if(window.renderBudget) window.renderBudget(monthValue);
-        // 关闭已打开的明细
-        if(window.closeBudgetDetail) window.closeBudgetDetail();
-      }
-    };
-  }
-  
-  // 重置到当前月按钮
-  $('#btnResetBudgetMonth').onclick = ()=>{
-    if(budgetMonthSelector){
+    const budgetViewMode = $('#budgetViewMode');
+    const budgetMonthSelector = $('#budgetMonthSelector');
+    if (budgetMonthSelector) {
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       budgetMonthSelector.value = `${year}-${month}`;
-      if(window.renderBudget) window.renderBudget(null);
-      if(window.closeBudgetDetail) window.closeBudgetDetail();
     }
+  
+    function refreshBudgetByControls() {
+      if (!window.renderBudget) return;
+      const mode = budgetViewMode ? budgetViewMode.value : 'month';
+      const monthValue = budgetMonthSelector ? budgetMonthSelector.value : null;
+      window.renderBudget(monthValue || null, mode);
+      if (window.closeBudgetDetail) window.closeBudgetDetail();
+    }
+  
+    if (budgetViewMode) {
+      budgetViewMode.onchange = () => {
+        refreshBudgetByControls();
+      };
+    }
+  
+    if (budgetMonthSelector) {
+      budgetMonthSelector.onchange = () => {
+        refreshBudgetByControls();
+      };
+    }
+  
+  
+  // 重置到当前月按钮
+  $('#btnResetBudgetMonth').onclick = ()=>{
+        if (budgetMonthSelector) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            budgetMonthSelector.value = `${year}-${month}`;
+          }
+          refreshBudgetByControls();
   };
   
   // 关闭预算明细按钮
@@ -272,6 +283,42 @@ function bindEvents(){
       if(window.renderCategoriesTable) window.renderCategoriesTable();
     }
   };
+  
+  // 预算设置表单折叠/展开
+  const budgetFormCard = $('#budgetFormCard');
+  const btnToggleBudgetForm = $('#btnToggleBudgetForm');
+  if (btnToggleBudgetForm && budgetFormCard) {
+    btnToggleBudgetForm.onclick = () => {
+      budgetFormCard.classList.toggle('collapsed');
+    };
+  }
+
+  // 报表支出分类饼图控制
+  const reportPieViewMode = $('#reportPieViewMode');
+  const reportPieMonth = $('#reportPieMonth');
+
+  if (reportPieMonth) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    reportPieMonth.value = `${y}-${m}`;
+  }
+
+  function refreshReportsPie() {
+    if (window.renderReports) window.renderReports();
+  }
+
+  if (reportPieViewMode) {
+    reportPieViewMode.onchange = () => {
+      refreshReportsPie();
+    };
+  }
+
+  if (reportPieMonth) {
+    reportPieMonth.onchange = () => {
+      refreshReportsPie();
+    };
+  }
 }
 
 async function onSavePrefs(e){ 

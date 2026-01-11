@@ -65,7 +65,11 @@ function renderTabs() {
       if (t.id === 'dashboard' && window.renderAcctDonut) { window.renderAcctDonut(); }
       if (t.id === 'budget' && window.renderBudget) {
         if (window.closeBudgetDetail) window.closeBudgetDetail();
-        window.renderBudget(null);
+        const modeSel = document.getElementById('budgetViewMode');
+        const monthSel = document.getElementById('budgetMonthSelector');
+        const mode = modeSel ? modeSel.value : 'month';
+        const monthVal = monthSel ? monthSel.value : null;
+        window.renderBudget(monthVal || null, mode);
       }
     };
     nav.appendChild(btn);
@@ -107,40 +111,6 @@ async function loadProfile(profileId, initSample = false) {
     await window.loadCategories();
   }
 }
-
-// async function boot() {
-//   await window.openDB();
-//   renderTabs();
-//   if (window.bindEvents) window.bindEvents();
-//   await loadProfile(window.state.profileId, true);
-//   if (window.renderAll) window.renderAll();
-//   if (window.renderCategoriesTable) window.renderCategoriesTable();
-//   console.log('boot finished, binding import/export buttons');
-//   // 绑定导入导出按钮
-//   window.addEventListener('load', () => {
-//     console.log('window load event fired, binding buttons');
-//     const pid = document.querySelector('#dataProfileId');
-//     if (pid && window.state)
-//       pid.textContent = window.state.profileId;
-//     const bx = document.querySelector('#btnExportData');
-//     if (bx)
-//       bx.onclick = window.exportCurrentIdData;
-//     const bi = document.querySelector('#btnImportData');
-//     if (bi)
-//       bi.onclick = () => document.querySelector('#importFile')?.click();
-//     const fi = document.querySelector('#importFile');
-//     if (fi) {
-//       fi.onchange = (e) => {
-//         const f = e.target.files && e.target.files[0];
-//         if (f && window.importCurrentIdDataFromFile) {
-//           window.importCurrentIdDataFromFile(f);
-//         }
-//         e.target.value = '';
-//       };
-//     }
-//     const bc = document.querySelector('#btnClearCurrentData'); if (bc) bc.onclick = window.clearCurrentIdData;
-//   });
-// }
 
 // 暴露到全局
 async function boot() {

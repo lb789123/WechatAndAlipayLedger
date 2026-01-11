@@ -48,30 +48,153 @@ function drawLineChart(cnv, labels, s1, s2){
   ctx.fillStyle='#f05252'; ctx.fillRect(W-88*dpr, pad+14*dpr, 10*dpr, 3*dpr);
 }
 
-function currentMonthExpenseByCat(){
-  if(!window.state) return {labels:[],values:[]};
+// 按不同范围统计支出分类
+// mode: 'month' | 'select-month' | 'year'
+function expenseByCatForRange(mode = 'month', monthValue = null) {
+  if (!window.state) return { labels: [], values: [], periodLabel: '' };
   const state = window.state;
-  const map={}; const now=new Date();
-  state.txs.filter(t=>t.side==='out' && !t.isTransfer && sameMonth(t.date,now)).forEach(t=>{
-    const acc=state.accounts.find(a=>a.id===t.accountId); if(!acc) return; 
-    const v=amountToBase(t.amount,acc.currency); if(v===null) return;
-    const c=t.category||'其他'; map[c]=(map[c]||0)+v;
-  });
-  const labels=Object.keys(map); const values=labels.map(k=>map[k]);
-  return {labels,values};
+  const now = new Date();
+
+  let year, month;
+  if (monthValue) {
+    const parts = String(monthValue).split('-');
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1] || (now.getMonth() + 1), 10);
+  } else {
+    year = now.getFullYear();
+    month = now.getMonth() + 1;
+  }
+
+  const monthDate = new Date(year, month - 1, 1);
+  const map = {};
+
+  state.txs
+    .filter(t => t.side === 'out' && !t.isTransfer)
+    .forEach(t => {
+      const d = new Date(t.date);
+      if (isNaN(d)) return;
+
+      if (mode === 'year') {
+        if (d.getFullYear() !== year) return;
+      } else {
+        if (!sameMonth(d, monthDate)) return;
+      }
+
+      const acc = state.accounts.find(a => a.id === t.accountId);
+      if (!acc) return;
+      const v = amountToBase(t.amount, acc.currency);
+      if (v === null) return;
+      const c = t.category || '其他';
+      map[c] = (map[c] || 0) + v;
+    });
+
+  const labels = Object.keys(map);
+  const values = labels.map(k => map[k]);
+
+  let periodLabel = '';
+  if (mode === 'year') {
+    periodLabel = `${year} 年`;
+  } else {
+    periodLabel = `${ym(monthDate)}`;
+  }
+
+  return { labels, values, periodLabel };
 }
 
 function drawPieChart(cnv, labels, values){
-  const dpr=setCanvasSizePlot(cnv); const ctx=cnv.getContext('2d');
-  ctx.clearRect(0,0,cnv.width,cnv.height);
-  const W=cnv.width, H=cnv.height; const R=Math.min(W,H)/2 - 30*dpr; const cx=W/2, cy=H/2;
-  const sum=values.reduce((a,b)=>a+b,0)||1; let start=-Math.PI/2;
-  values.forEach((v,i)=>{ const ang=2*Math.PI*(v/sum); const hue=(i*55)%360; ctx.fillStyle=`hsl(${hue} 70% 55% / 1)`; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,start,start+ang); ctx.closePath(); ctx.fill(); start+=ang; });
-  const muted=getComputedStyle(document.body).getPropertyValue('--muted')||'#9fb3c8';
-  const text=getComputedStyle(document.body).getPropertyValue('--text')||'#e7edf3';
-  ctx.fillStyle=text; ctx.font=`${12*dpr}px system-ui`;
-  let ly=20*dpr; labels.forEach((lb,i)=>{ const hue=(i*55)%360; ctx.fillStyle=`hsl(${hue} 70% 60% / 1)`; ctx.fillRect(20*dpr, ly-8*dpr, 10*dpr, 10*dpr); ctx.fillStyle=muted; const val=values[i]; const pct=((val/sum)*100).toFixed(1)+'%'; ctx.fillText(`${lb} · ${pct}`, 36*dpr, ly); ly+=16*dpr; });
-}
+  if (!cnv) return;
+  const dpr = setCanvasSizePlot(cnv);
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, cnv.width, cnv.height);
+
+  const W = cnv.width, H = cnv.height;
+  const R = Math.min(W, H) / 2 - 30 * dpr;
+  const cx = W / 2, cy = H / 2;
+  const sum = values.reduce((a, b) => a + b, 0) || 1;
+  let start = -Math.PI / 2;
+
+  const segments = [];
+
+  values.forEach((v, i) => {
+    const ang = 2 * Math.PI * (v / sum);
+    const hue = (i * 55) % 360;
+    const color = `hsl(${hue} 70% 55% / 1)`;
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, start, start + ang);
+    ctx.closePath();
+    ctx.fill();
+
+    segments.push({
+      label: labels[i],
+      value: v,
+      startAngle: start,
+      endAngle: start + ang,
+      color
+    });
+
+    start += ang;
+  });
+
+  const muted = getComputedStyle(document.body).getPropertyValue('--muted') || '#9fb3c8';
+  const text = getComputedStyle(document.body).getPropertyValue('--text') || '#e7edf3';
+  ctx.fillStyle = text;
+  ctx.font = `${12 * dpr}px system-ui`;
+  let ly = 20 * dpr;
+  labels.forEach((lb, i) => {
+    const hue = (i * 55) % 360;
+    ctx.fillStyle = `hsl(${hue} 70% 60% / 1)`;
+    ctx.fillRect(20 * dpr, ly - 8 * dpr, 10 * dpr, 10 * dpr);
+    ctx.fillStyle = muted;
+    const val = values[i];
+    const pct = ((val / sum) * 100).toFixed(1);
+    ctx.fillText(`${lb} · ${val.toFixed(2)} (${pct}%)`, 36 * dpr, ly);
+    ly += 18 * dpr;
+  });
+
+  const tooltip = document.getElementById('tooltip');
+  if (!tooltip) return;
+
+  function showTooltip(x, y, textContent) {
+    tooltip.textContent = textContent;
+    tooltip.style.display = 'block';
+    tooltip.style.left = `${x + 10}px`;
+    tooltip.style.top = `${y + 10}px`;
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = 'none';
+  }
+
+  cnv.onmousemove = (e) => {
+    const rect = cnv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cnv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cnv.height / rect.height);
+    const dx = x - cx;
+    const dy = y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > R || dist < 5 * dpr) {
+      hideTooltip();
+      return;
+    }
+
+    let ang = Math.atan2(dy, dx);
+
+    const seg = segments.find(s => ang >= s.startAngle && ang <= s.endAngle);
+    if (!seg) {
+      hideTooltip();
+      return;
+    }
+
+    const pct = ((seg.value / sum) * 100).toFixed(1);
+    const content = `${seg.label}：${seg.value.toFixed(2)}（${pct}%）`;
+    showTooltip(e.clientX, e.clientY, content);
+  };
+
+  cnv.onmouseleave = hideTooltip;}
 
 function renderReports(){
   if(!window.state) return;
@@ -79,8 +202,21 @@ function renderReports(){
   const {labels,inc,exp}=monthlyIEBase(12);
   $('#trendNote').textContent=`基准：${state.prefs.baseCurrency}`;
   drawLineChart($('#lineChart'), labels, inc, exp);
-  const pie=currentMonthExpenseByCat(); 
-  $('#pieNote').textContent=`月份：${ym(new Date())} · 基准：${state.prefs.baseCurrency}`;
+
+  const modeSel = document.getElementById('reportPieViewMode');
+  const monthInput = document.getElementById('reportPieMonth');
+  const mode = modeSel ? modeSel.value : 'month';
+
+  if (monthInput && !monthInput.value) {
+    const now = new Date();
+    monthInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  const monthVal = monthInput ? monthInput.value : null;
+  const effectiveMode = (mode === 'select-month') ? 'select-month' : mode;
+  const pie = expenseByCatForRange(effectiveMode, monthVal);
+
+  $('#pieNote').textContent=`期间：${pie.periodLabel} · 基准：${state.prefs.baseCurrency}`;
   drawPieChart($('#pieChart'), pie.labels, pie.values);
 }
 

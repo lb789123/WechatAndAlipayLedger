@@ -16,6 +16,11 @@ async function onSaveBudget(e){
 }
 
 function startEditBudget(cat){
+    // 展开预算设置卡片
+  const budgetFormCard = $('#budgetFormCard');
+  if (budgetFormCard && budgetFormCard.classList.contains('collapsed')) {
+    budgetFormCard.classList.remove('collapsed');
+  }
   if(!window.pkey) return;
   const pkey = window.pkey;
   $('#bdg_edit_key').value=pkey('bdg:'+cat);
@@ -35,6 +40,12 @@ function endEditBudget(){
   $('#bdgEditingPill').parentElement.classList.remove('editing');
   $('#bdgEditingPill').style.display='none';
   $('#btnCancelEditBudget').style.display='none';
+
+    // 结束编辑后收起预算设置卡片
+    const budgetFormCard = $('#budgetFormCard');
+    if (budgetFormCard) {
+      budgetFormCard.classList.add('collapsed');    
+    }
 }
 
 async function deleteBudget(cat){

@@ -65,7 +65,9 @@ function renderTabs() {
       if (t.id === 'dashboard' && window.renderAcctDonut) { window.renderAcctDonut(); }
       if (t.id === 'budget' && window.renderBudget) {
         if (window.closeBudgetDetail) window.closeBudgetDetail();
-        window.renderBudget(null);
+        const viewMode = $('#budgetViewMode') ? $('#budgetViewMode').value : 'month';
+        const monthValue = $('#budgetMonthSelector') ? $('#budgetMonthSelector').value : null;
+        window.renderBudget(monthValue, viewMode);
       }
     };
     nav.appendChild(btn);

@@ -79,6 +79,16 @@
       <div class="card" style="margin-top:14px">
         <div class="content">
           <div class="row">
+            <h3>本月收支结构（基准）</h3>
+            <div class="space"></div><span class="note" id="iePieNote"></span>
+          </div>
+          <canvas id="iePieChart" height="260"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="content">
+          <div class="row">
             <h3>最近交易</h3>
             <div class="space"></div><span class="note">点击"编辑"可直接修改</span>
           </div>
@@ -274,6 +284,11 @@
             <h3>预算查询</h3>
             <div class="space"></div>
             <div class="row" style="gap:8px;align-items:center">
+              <label class="muted">查看方式：</label>
+              <select id="budgetViewMode" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)">
+                <option value="month">按月</option>
+                <option value="year">按年</option>
+              </select>
               <label class="muted">查询月份：</label>
               <input type="month" id="budgetMonthSelector"
                 style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)" />
@@ -285,23 +300,27 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card collapsed" id="budgetFormCard">
         <div class="content">
           <div class="row">
             <h3>设置预算</h3>
             <span class="pill editing-badge" id="bdgEditingPill">✏️ 正在编辑预算</span>
+            <div class="space"></div>
+            <button class="btn ghost" id="btnToggleBudgetForm" title="展开/收起">▼</button>
           </div>
-          <form id="budgetForm" class="grid g-3">
-            <div class="field"><label>分类</label><select id="bdg_category"></select></div>
-            <div class="field"><label>月预算金额（基准）</label><input id="bdg_amount" type="number" step="0.01" /></div>
-            <input type="hidden" id="bdg_edit_key" />
-            <div class="row" style="grid-column:1/-1;gap:8px">
-              <button class="btn primary" type="submit">保存预算</button>
-              <button class="btn" type="reset" id="btnResetBudget">清空</button>
-              <button class="btn warn" type="button" id="btnCancelEditBudget" style="display:none">取消编辑</button>
-            </div>
-          </form>
-          <p class="note">在"本月预算"卡片上点击"编辑/删除"即可管理已设置的预算。点击预算卡片可查看该分类的交易明细。</p>
+          <div id="budgetFormWrapper">
+            <form id="budgetForm" class="grid g-3" style="margin-top:12px">
+              <div class="field"><label>分类</label><select id="bdg_category"></select></div>
+              <div class="field"><label>月预算金额（基准）</label><input id="bdg_amount" type="number" step="0.01" /></div>
+              <input type="hidden" id="bdg_edit_key" />
+              <div class="row" style="grid-column:1/-1;gap:8px">
+                <button class="btn primary" type="submit">保存预算</button>
+                <button class="btn" type="reset" id="btnResetBudget">清空</button>
+                <button class="btn warn" type="button" id="btnCancelEditBudget" style="display:none">取消编辑</button>
+              </div>
+            </form>
+            <p class="note">在"本月预算"卡片上点击"编辑/删除"即可管理已设置的预算。点击预算卡片可查看该分类的交易明细。</p>
+          </div>
         </div>
       </div>
 
@@ -348,9 +367,19 @@
       <div class="card">
         <div class="content">
           <div class="row">
-            <h3>本月支出分类占比（基准）</h3>
-            <div class="space"></div><span class="note" id="pieNote"></span>
+            <h3>支出分类占比（基准）</h3>
+            <div class="space"></div>
+            <div class="row" style="gap:8px;align-items:center">
+              <label class="muted">查看方式：</label>
+              <select id="reportPieViewMode" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)">
+                <option value="month">本月</option>
+                <option value="select-month">选择月份</option>
+                <option value="year">本年</option>
+              </select>
+              <input type="month" id="reportPieMonth" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);display:none" />
+            </div>
           </div>
+          <div class="row" style="margin-top:8px"><span class="note" id="pieNote"></span></div>
           <canvas id="pieChart" height="260"></canvas>
         </div>
       </div>

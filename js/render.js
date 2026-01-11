@@ -79,6 +79,7 @@ function renderDashboard(){
   });
 
   renderAcctDonut();
+  renderIEPieChart();
 }
 
 // ====== 圆环图 ======
@@ -381,7 +382,7 @@ function renderTxTable(){
 //   });
 // }
 
-function renderBudget(targetMonth = null){
+function renderBudget(targetMonth = null, viewMode = 'month'){
   if(!window.state) return;
   const state = window.state;
   
@@ -396,46 +397,94 @@ function renderBudget(targetMonth = null){
   } else {
     targetDate = new Date();
   }
-  const monthStr = ym(targetDate);
-  $('#budgetMonthLabel').textContent = `月份：${monthStr}`;
+  
+  // 根据 viewMode 确定标签和时间范围
+  const year = targetDate.getFullYear();
+  const month = targetDate.getMonth();
+  let periodLabel;
+  let startDate, endDate;
+  
+  if(viewMode === 'year'){
+    periodLabel = `${year} 年`;
+    startDate = new Date(year, 0, 1);
+    endDate = new Date(year, 11, 31);
+  } else {
+    const monthStr = ym(targetDate);
+    periodLabel = `月份：${monthStr}`;
+    startDate = new Date(year, month, 1);
+    endDate = new Date(year, month + 1, 0);
+  }
+  
+  $('#budgetMonthLabel').textContent = periodLabel;
   
   // 设置月份选择器的值（如果存在且未被用户手动设置）
   const monthInput = $('#budgetMonthSelector');
   if(monthInput){
-    const year = targetDate.getFullYear();
-    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const newValue = `${year}-${month}`;
+    const monthStr = String(month + 1).padStart(2, '0');
+    const newValue = `${year}-${monthStr}`;
     // 只在值不同时更新，避免触发change事件
     if(monthInput.value !== newValue){
       monthInput.value = newValue;
     }
   }
   
-  const wrap=$('#budgetGrid'); wrap.innerHTML='';
-  const spent={};
+  // 设置视图模式选择器（如果存在）
+  const viewModeInput = $('#budgetViewMode');
+  if(viewModeInput && viewModeInput.value !== viewMode){
+    viewModeInput.value = viewMode;
+  }
   
-  // 筛选指定月份的交易
+  const wrap=$('#budgetGrid'); wrap.innerHTML='';
+  const netSpent={}; // 改为净支出（支出-收入）
+  
+  // 筛选时间范围内的交易（支持refund-aware）
   state.txs.filter(t=>{
-    if(t.side!=='out' || t.isTransfer) return false;
-    return sameMonth(t.date, targetDate);
+    if(t.isTransfer) return false;
+    const txDate = new Date(t.date);
+    return txDate >= startDate && txDate <= endDate;
   }).forEach(t=>{
     const acc=state.accounts.find(a=>a.id===t.accountId); if(!acc) return;
     const v=amountToBase(t.amount,acc.currency); if(v===null) return;
-    const c=t.category||'其他'; spent[c]=(spent[c]||0)+v;
+    const c=t.category||'其他';
+    if(!netSpent[c]) netSpent[c] = 0;
+    // 支出为负，收入为正
+    if(t.side === 'out') netSpent[c] -= v;
+    if(t.side === 'in') netSpent[c] += v;
+  });
+  
+  // 计算实际使用额：Math.max(0, -netSum) 即净支出金额
+  const spent = {};
+  Object.keys(netSpent).forEach(c => {
+    spent[c] = Math.max(0, -netSpent[c]);
   });
   
   const categories=[...new Set([...Object.keys(state.budgets), ...Object.keys(spent)])];
   categories.forEach(c=>{
-    const bAmt=Number(state.budgets[c]||0), sAmt=Number(spent[c]||0);
-    const pct=bAmt>0? Math.min(100, Math.round(sAmt/bAmt*100)) : 0;
-    const card=document.createElement('div'); card.className='card';
+    const bAmt=Number(state.budgets[c]||0);
+    const sAmt=Number(spent[c]||0);
+    
+    // 根据 viewMode，如果是年度视图，预算应该是月预算*12
+    const effectiveBudget = viewMode === 'year' ? bAmt * 12 : bAmt;
+    const usedPct = effectiveBudget > 0 ? sAmt / effectiveBudget : 0;
+    const displayPct = Math.min(100, Math.round(usedPct * 100));
+    
+    // 确定进度条颜色
+    let barClass = 'low';
+    if(usedPct >= 0.9) barClass = 'high';
+    else if(usedPct >= 0.5) barClass = 'medium';
+    
+    const card=document.createElement('div'); 
+    card.className='card budget-card';
     card.style.cursor='pointer';
     card.dataset.category=c;
-    card.dataset.month=monthStr;
+    card.dataset.month=ym(targetDate);
+    card.dataset.viewMode=viewMode;
+    
     card.innerHTML=`<div class='content'>
-      <div class='row'><strong>${c}</strong><span class='space'></span><span class='muted'>预算：${fmtAmount(bAmt,state.prefs.baseCurrency)}</span></div>
-      <div class='row' style='margin-top:6px'><div class='progress' style='flex:1'><i style='width:${pct}%'></i></div> <span class='pill'>${pct}%</span></div>
-      <div class='row' style='margin-top:6px'><span class='muted'>已用：</span><strong class='amount negative'>-${fmtAmount(sAmt,state.prefs.baseCurrency)}</strong><span class='space'></span><span class='muted'>剩余：</span><strong>${fmtAmount(Math.max(0,bAmt-sAmt),state.prefs.baseCurrency)}</strong></div>
+      <div class='row'><strong>${c}</strong><span class='space'></span><span class='muted'>预算：${fmtAmount(effectiveBudget,state.prefs.baseCurrency)}</span></div>
+      <div class='budget-bar-outer' style='margin-top:8px'><div class='budget-bar-inner ${barClass}' style='width:${displayPct}%'></div></div>
+      <div class='row' style='margin-top:6px'><span class='pill'>${displayPct}%</span></div>
+      <div class='row' style='margin-top:6px'><span class='muted'>已用：</span><strong class='amount negative'>-${fmtAmount(sAmt,state.prefs.baseCurrency)}</strong><span class='space'></span><span class='muted'>剩余：</span><strong>${fmtAmount(Math.max(0,effectiveBudget-sAmt),state.prefs.baseCurrency)}</strong></div>
       <div class='row' style='margin-top:8px;justify-content:flex-end;gap:8px'>
         <button class='btn ghost' data-bdg-edit='${c}'>编辑</button>
         <button class='btn ghost' data-bdg-del='${c}'>删除</button>
@@ -446,7 +495,11 @@ function renderBudget(targetMonth = null){
     card.addEventListener('click', (e)=>{
       // 如果点击的是按钮，不触发卡片点击
       if(e.target.closest('button')) return;
-      showBudgetDetail(c, monthStr);
+      if(viewMode === 'year'){
+        showBudgetDetail(c, ym(targetDate), 'year');
+      } else {
+        showBudgetDetail(c, ym(targetDate), 'month');
+      }
     });
     
     wrap.appendChild(card);
@@ -468,19 +521,30 @@ function renderBudget(targetMonth = null){
 }
 
 // 显示预算分类的交易明细
-function showBudgetDetail(category, month){
+function showBudgetDetail(category, month, viewMode = 'month'){
   if(!window.state) return;
   const state = window.state;
   
   // 解析月份
   const [year, monthNum] = month.split('-');
-  const targetDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+  let targetDate, endDate, periodLabel;
   
-  // 筛选该分类在该月份的所有交易
+  if(viewMode === 'year'){
+    targetDate = new Date(parseInt(year), 0, 1);
+    endDate = new Date(parseInt(year), 11, 31);
+    periodLabel = `${year} 年`;
+  } else {
+    targetDate = new Date(parseInt(year), parseInt(monthNum) - 1, 1);
+    endDate = new Date(parseInt(year), parseInt(monthNum), 0);
+    periodLabel = month;
+  }
+  
+  // 筛选该分类在该时间范围的所有交易（支持refund-aware）
   const transactions = state.txs.filter(t=>{
-    if(t.side!=='out' || t.isTransfer) return false;
+    if(t.isTransfer) return false;
     if((t.category||'其他') !== category) return false;
-    return sameMonth(t.date, targetDate);
+    const txDate = new Date(t.date);
+    return txDate >= targetDate && txDate <= endDate;
   }).sort((a,b)=>b.date.localeCompare(a.date));
   
   // 显示明细卡片
@@ -489,35 +553,42 @@ function showBudgetDetail(category, month){
   const detailTable = $('#budgetDetailTable tbody');
   const detailTotal = $('#budgetDetailTotal');
   
-  detailTitle.textContent = `${category} - ${month} 交易明细`;
+  detailTitle.textContent = `${category} - ${periodLabel} 交易明细`;
   detailTable.innerHTML = '';
   
   let total = 0;
   transactions.forEach(t=>{
     const acc = state.accounts.find(a=>a.id===t.accountId);
     const baseAmount = amountToBase(t.amount, acc ? acc.currency : state.prefs.baseCurrency);
-    if(baseAmount !== null){
-      total += baseAmount;
-    }
     
     const tr = document.createElement('tr');
-    const baseAmt = baseAmount !== null ? baseAmount : 0;
+    const sign = t.side === 'in' ? '+' : '-';
+    const amtClass = t.side === 'in' ? 'positive' : 'negative';
+    const displayAmt = t.amount;
+    
+    // 计算净支出贡献（支出减收入）
+    if(baseAmount !== null){
+      if(t.side === 'out') total += baseAmount;
+      if(t.side === 'in') total -= baseAmount;
+    }
+    
     tr.innerHTML = `
       <td>${t.date}</td>
       <td>${acc ? acc.name : ''}</td>
       <td>${t.payee || ''}</td>
       <td>${t.memo || ''}</td>
-      <td style='text-align:right' class='amount negative'>-${fmtAmount(t.amount, acc ? acc.currency : state.prefs.baseCurrency)}${baseAmount !== null && acc && acc.currency !== state.prefs.baseCurrency ? ` <span class='note'>(≈${fmtAmount(baseAmount, state.prefs.baseCurrency)})</span>` : ''}</td>
+      <td style='text-align:right' class='amount ${amtClass}'>${sign}${fmtAmount(displayAmt, acc ? acc.currency : state.prefs.baseCurrency)}${baseAmount !== null && acc && acc.currency !== state.prefs.baseCurrency ? ` <span class='note'>(≈${sign}${fmtAmount(baseAmount, state.prefs.baseCurrency)})</span>` : ''}</td>
     `;
     detailTable.appendChild(tr);
   });
   
   if(transactions.length === 0){
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan='5' style='text-align:center;color:var(--muted)'>该月该分类暂无交易记录</td>`;
+    tr.innerHTML = `<td colspan='5' style='text-align:center;color:var(--muted)'>该时段该分类暂无交易记录</td>`;
     detailTable.appendChild(tr);
   }
   
+  // 显示净支出合计
   detailTotal.textContent = fmtAmount(total, state.prefs.baseCurrency);
   detailCard.style.display = 'block';
   
@@ -700,6 +771,58 @@ function startInlineEditTx(t, tr){
     if(window.renderTxTable) window.renderTxTable();
   };
 }
+
+// ====== 收支结构饼图 ======
+function currentMonthIncomeExpense(){
+  if(!window.state) return {labels:[],values:[],colors:[]};
+  const state = window.state;
+  let income=0, expense=0;
+  const now=new Date();
+  state.txs.filter(t=>!t.isTransfer && sameMonth(t.date,now)).forEach(t=>{
+    const acc=state.accounts.find(a=>a.id===t.accountId); if(!acc) return;
+    const v=amountToBase(t.amount,acc.currency); if(v===null) return;
+    if(t.side==='in') income+=v;
+    if(t.side==='out') expense+=v;
+  });
+  // 收入用绿色，支出用红色
+  return {
+    labels:['收入','支出'],
+    values:[income, expense],
+    colors:['#31c48d','#f05252']
+  };
+}
+
+function drawIEPieChart(cnv, labels, values, colors){
+  const dpr=setCanvasSize(cnv); const ctx=cnv.getContext('2d');
+  ctx.clearRect(0,0,cnv.width,cnv.height);
+  const W=cnv.width, H=cnv.height; const R=Math.min(W,H)/2 - 30*dpr; const cx=W/2, cy=H/2;
+  const sum=values.reduce((a,b)=>a+b,0)||1; let start=-Math.PI/2;
+  values.forEach((v,i)=>{
+    const ang=2*Math.PI*(v/sum);
+    ctx.fillStyle=colors[i]||'#4c8bf5';
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,R,start,start+ang); ctx.closePath(); ctx.fill();
+    start+=ang;
+  });
+  // 添加中心文字
+  const text=getComputedStyle(document.body).getPropertyValue('--text')||'#e7edf3';
+  const muted=getComputedStyle(document.body).getPropertyValue('--muted')||'#9fb3c8';
+  ctx.fillStyle=text; ctx.font=`${14*dpr}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('本月收支', cx, cy-10*dpr);
+  ctx.fillStyle=muted; ctx.font=`${12*dpr}px system-ui`; 
+  const net = values[0] - values[1];
+  const netSign = net >= 0 ? '+' : '';
+  ctx.fillText(netSign + net.toFixed(0), cx, cy+10*dpr);
+}
+
+function renderIEPieChart(){
+  if(!window.state) return;
+  const state = window.state;
+  const {labels,values,colors}=currentMonthIncomeExpense();
+  const cnv=$('#iePieChart');
+  drawIEPieChart(cnv, labels, values, colors);
+  $('#iePieNote').textContent=`月份：${ym(new Date())} · 基准：${state.prefs.baseCurrency}`;
+}
+
 // 暴露到全局
 window.renderAll = renderAll;
 window.renderDashboard = renderDashboard;
@@ -708,6 +831,7 @@ window.renderTxTable = renderTxTable;
 window.renderBudget = renderBudget;
 window.renderFxTable = renderFxTable;
 window.renderAcctDonut = renderAcctDonut;
+window.renderIEPieChart = renderIEPieChart;
 window.renderCategoriesTable = renderCategoriesTable;
 window.showBudgetDetail = showBudgetDetail;
 window.closeBudgetDetail = closeBudgetDetail;

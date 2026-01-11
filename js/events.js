@@ -82,6 +82,23 @@ function bindEvents(){
   $('#btnResetBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   $('#btnCancelEditBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   
+  // 预算表单折叠/展开
+  $('#btnToggleBudgetForm').onclick=()=>{
+    const formCard = $('#budgetFormCard');
+    if(formCard) formCard.classList.toggle('collapsed');
+  };
+  
+  // 预算视图模式选择器
+  const budgetViewMode = $('#budgetViewMode');
+  if(budgetViewMode){
+    budgetViewMode.onchange = ()=>{
+      const mode = budgetViewMode.value;
+      const monthValue = $('#budgetMonthSelector').value;
+      if(window.renderBudget) window.renderBudget(monthValue, mode);
+      if(window.closeBudgetDetail) window.closeBudgetDetail();
+    };
+  }
+  
   // 预算月份选择器
   const budgetMonthSelector = $('#budgetMonthSelector');
   if(budgetMonthSelector){
@@ -93,8 +110,9 @@ function bindEvents(){
     
     budgetMonthSelector.onchange = (e)=>{
       const monthValue = e.target.value;
+      const mode = budgetViewMode ? budgetViewMode.value : 'month';
       if(monthValue){
-        if(window.renderBudget) window.renderBudget(monthValue);
+        if(window.renderBudget) window.renderBudget(monthValue, mode);
         // 关闭已打开的明细
         if(window.closeBudgetDetail) window.closeBudgetDetail();
       }
@@ -108,7 +126,8 @@ function bindEvents(){
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       budgetMonthSelector.value = `${year}-${month}`;
-      if(window.renderBudget) window.renderBudget(null);
+      const mode = budgetViewMode ? budgetViewMode.value : 'month';
+      if(window.renderBudget) window.renderBudget(null, mode);
       if(window.closeBudgetDetail) window.closeBudgetDetail();
     }
   };
@@ -212,6 +231,36 @@ function bindEvents(){
     if($('#sec-reports').classList.contains('active') && window.renderReports){ window.renderReports(); } 
     if($('#sec-dashboard').classList.contains('active') && window.renderAcctDonut){ window.renderAcctDonut(); } 
   });
+  
+  // 报表控制
+  const reportPieViewMode = $('#reportPieViewMode');
+  const reportPieMonth = $('#reportPieMonth');
+  
+  if(reportPieViewMode){
+    reportPieViewMode.onchange = ()=>{
+      const mode = reportPieViewMode.value;
+      if(reportPieMonth){
+        if(mode === 'select-month'){
+          reportPieMonth.style.display = 'inline-block';
+        } else {
+          reportPieMonth.style.display = 'none';
+        }
+      }
+      if(window.renderReports) window.renderReports();
+    };
+  }
+  
+  if(reportPieMonth){
+    // 初始化为当前月
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    reportPieMonth.value = `${year}-${month}`;
+    
+    reportPieMonth.onchange = ()=>{
+      if(window.renderReports) window.renderReports();
+    };
+  }
   
   // 分类管理事件
   $('#btnAddCategory').onclick=()=>{

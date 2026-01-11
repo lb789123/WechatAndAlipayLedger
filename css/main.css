@@ -98,3 +98,16 @@ tr.drop-target{outline:2px dashed var(--primary)}
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;backdrop-filter:blur(2px)}
 .modal-content{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);max-width:900px;width:100%;max-height:90vh;overflow-y:auto;padding:20px;margin-top:40px}
 @media(max-width:640px){.modal-content{padding:14px;max-height:95vh;margin-top:10px}}
+
+/* Budget form collapsible */
+#budgetFormCard.collapsed #budgetFormWrapper{display:none}
+#budgetFormCard.collapsed #btnToggleBudgetForm::before{content:'▶';position:absolute;left:0}
+#budgetFormCard:not(.collapsed) #btnToggleBudgetForm::before{content:'▼';position:absolute;left:0}
+
+/* Budget progress bars */
+.budget-card{position:relative}
+.budget-bar-outer{height:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:999px;overflow:hidden;margin:8px 0}
+.budget-bar-inner{height:100%;transition:width 0.3s ease,background-color 0.3s ease;border-radius:999px}
+.budget-bar-inner.low{background:var(--positive)}
+.budget-bar-inner.medium{background:var(--warn)}
+.budget-bar-inner.high{background:var(--negative)}

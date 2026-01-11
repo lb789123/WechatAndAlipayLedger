@@ -96,3 +96,6 @@ ledger/
 （1）预算考虑收入和支出的总和，并可以进行月度、年度查看
 （2）各分类下的消费情况，及月度消费查询
 （3）各交易记录支持修改
+<img width="1601" height="745" alt="交易明细支持修改" src="https://github.com/user-attachments/assets/37364875-b9dd-4d45-8d54-6774fc909c8e" />
+<img width="1614" height="1203" alt="流水按时间、类型、分类筛选" src="https://github.com/user-attachments/assets/3c792566-053f-47ea-a786-119f21c504e7" />
+<img width="1535" height="1254" alt="预算考虑收入和支出的总和，并可以进行月度、年度查看" src="https://github.com/user-attachments/assets/6ea5209a-0543-49be-a90e-42a4b0e10630" />

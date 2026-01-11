@@ -7,9 +7,19 @@ function renderAll(){
   renderBudget(); 
   renderFxTable(); 
   renderCategoriesTable();
+  fillFilterCategorySelect();//更新分类筛选
   updateDataProfileId();
 }
+function fillFilterCategorySelect(){
+  if(!window.state) return;
+  const sel = $('#filter_category');
+  if(!sel) return;
+  const state = window.state;
+  const cats = state.categories || [];
 
+  sel.innerHTML = '<option value="">全部分类</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
 function fillAccountSelects(){
   if(!window.state) return;
   const state = window.state;
@@ -234,35 +244,142 @@ function renderAccountsTable(){
 function renderTxTable(){
   if(!window.state) return;
   const state = window.state;
-  const acct=$('#filter_account').value; const kw=$('#filter_kw').value.trim().toLowerCase();
-  const tb=$('#txTable tbody'); tb.innerHTML='';
-  let list=[...state.txs];
-  if(acct) list=list.filter(t=>t.accountId===acct);
-  if(kw) list=list.filter(t=> (t.category||'').toLowerCase().includes(kw) || (t.payee||'').toLowerCase().includes(kw) || (t.memo||'').toLowerCase().includes(kw));
-  list.sort((a,b)=>b.date.localeCompare(a.date));
-  list.forEach(t=>{
-    const acc=state.accounts.find(a=>a.id===t.accountId);
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${t.date}</td><td>${acc?acc.name:''}</td><td>${t.isTransfer? '转账':(t.side==='in'?'收入':'支出')}</td>
-      <td>${t.category||''}${t.payee? ' · '+t.payee:''}</td><td>${t.memo||''}</td>
-      <td style='text-align:right' class='amount ${t.side==='in'?'positive':'negative'}'>${(t.side==='in'?'+':'-')+fmtAmount(t.amount,acc?acc.currency:state.prefs.baseCurrency)}</td>
+
+  const acct    = $('#filter_account').value;
+  const kw      = $('#filter_kw').value.trim().toLowerCase();
+  const dFromEl = $('#filter_date_from');
+  const dToEl   = $('#filter_date_to');
+  const typeEl  = $('#filter_type');
+  const catEl   = $('#filter_category');
+
+  const dFrom = dFromEl && dFromEl.value ? dFromEl.value : '';
+  const dTo   = dToEl   && dToEl.value   ? dToEl.value   : '';
+  const fType = typeEl  ? typeEl.value.trim() : '';
+  const fCat  = catEl   ? catEl.value.trim()  : '';
+
+  const tb = $('#txTable tbody'); 
+  tb.innerHTML = '';
+
+  let list = [...state.txs];
+
+  // 账户筛选
+  if(acct){
+    list = list.filter(t => t.accountId === acct);
+  }
+
+  // 时间段筛选
+  if(dFrom){
+    list = list.filter(t => (t.date || '') >= dFrom);
+  }
+  if(dTo){
+    list = list.filter(t => (t.date || '') <= dTo);
+  }
+
+  // 类型筛选：收入 / 支出 / 转账
+  if(fType){
+    if(fType === 'transfer'){
+      list = list.filter(t => !!t.isTransfer);
+    } else {
+      list = list.filter(t => !t.isTransfer && t.side === fType);
+    }
+  }
+
+  // 分类筛选（这里允许与类型组合）
+  if(fCat){
+    list = list.filter(t => (t.category || '') === fCat);
+  }
+
+  // 关键字筛选
+  if(kw){
+    list = list.filter(t => {
+      const cat = (t.category || '').toLowerCase();
+      const pay = (t.payee    || '').toLowerCase();
+      const memo= (t.memo     || '').toLowerCase();
+      return cat.includes(kw) || pay.includes(kw) || memo.includes(kw);
+    });
+  }
+
+  list.sort((a,b) => b.date.localeCompare(a.date));
+
+  list.forEach(t => {
+    const acc = state.accounts.find(a => a.id === t.accountId);
+    const tr  = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${t.date}</td>
+      <td>${acc ? acc.name : ''}</td>
+      <td>${t.isTransfer ? '转账' : (t.side==='in' ? '收入' : '支出')}</td>
+      <td>${t.category || ''}${t.payee ? ' · ' + t.payee : ''}</td>
+      <td>${t.memo || ''}</td>
+      <td style='text-align:right' class='amount ${t.side==='in'?'positive':'negative'}'>
+        ${(t.side==='in'?'+':'-') + fmtAmount(t.amount, acc ? acc.currency : state.prefs.baseCurrency)}
+      </td>
       <td style='text-align:right'>
         <button class='btn ghost' data-edit-tx='${t.id}'>编辑</button>
         <button class='btn ghost' data-rm='${t.id}'>删除</button>
       </td>`;
     tb.appendChild(tr);
   });
+
+  // 删除逻辑（保持原有）
   $$('[data-rm]').forEach(b=>b.onclick=async ()=>{
     const t=state.txs.find(x=>x.id===b.dataset.rm); if(!t) return;
-    if(t.isTransfer && t.transferPeerId){ await window.idb.del('transactions',t.transferPeerId); state.txs=state.txs.filter(x=>x.id!==t.transferPeerId); }
-    await window.idb.del('transactions',t.id); state.txs=state.txs.filter(x=>x.id!==t.id); 
+    if(t.isTransfer && t.transferPeerId){
+      await window.idb.del('transactions',t.transferPeerId);
+      state.txs = state.txs.filter(x=>x.id!==t.transferPeerId);
+    }
+    await window.idb.del('transactions',t.id);
+    state.txs = state.txs.filter(x=>x.id!==t.id); 
     if(window.renderAll) window.renderAll();
   });
+
+  // 编辑逻辑（下一节讨论转账的策略）
   $$('[data-edit-tx]').forEach(b=>b.onclick=()=>{
     const t=state.txs.find(x=>x.id===b.dataset.editTx); if(!t) return;
-    if(window.startEditTx) window.startEditTx(t);
+    const tr = b.closest('tr');
+    if(!tr) return;
+
+    if(t.isTransfer){
+      // 方案：转账不支持真正编辑，给出提示
+      alert('转账流水暂不支持直接编辑，如需调整，请删除该转账并重新新增。');
+    }else{
+      // 普通收入/支出：行内编辑
+      if(window.startInlineEditTx) window.startInlineEditTx(t, tr);
+      // 或者直接调用你在同文件定义的 startInlineEditTx(t, tr)
+    }
   });
 }
+// function renderTxTable(){
+//   if(!window.state) return;
+//   const state = window.state;
+//   const acct=$('#filter_account').value; const kw=$('#filter_kw').value.trim().toLowerCase();
+//   const tb=$('#txTable tbody'); tb.innerHTML='';
+//   let list=[...state.txs];
+//   if(acct) list=list.filter(t=>t.accountId===acct);
+//   if(kw) list=list.filter(t=> (t.category||'').toLowerCase().includes(kw) || (t.payee||'').toLowerCase().includes(kw) || (t.memo||'').toLowerCase().includes(kw));
+//   list.sort((a,b)=>b.date.localeCompare(a.date));
+//   list.forEach(t=>{
+//     const acc=state.accounts.find(a=>a.id===t.accountId);
+//     const tr=document.createElement('tr');
+//     tr.innerHTML=`<td>${t.date}</td><td>${acc?acc.name:''}</td><td>${t.isTransfer? '转账':(t.side==='in'?'收入':'支出')}</td>
+//       <td>${t.category||''}${t.payee? ' · '+t.payee:''}</td><td>${t.memo||''}</td>
+//       <td style='text-align:right' class='amount ${t.side==='in'?'positive':'negative'}'>${(t.side==='in'?'+':'-')+fmtAmount(t.amount,acc?acc.currency:state.prefs.baseCurrency)}</td>
+//       <td style='text-align:right'>
+//         <button class='btn ghost' data-edit-tx='${t.id}'>编辑</button>
+//         <button class='btn ghost' data-rm='${t.id}'>删除</button>
+//       </td>`;
+//     tb.appendChild(tr);
+//   });
+//   $$('[data-rm]').forEach(b=>b.onclick=async ()=>{
+//     const t=state.txs.find(x=>x.id===b.dataset.rm); if(!t) return;
+//     if(t.isTransfer && t.transferPeerId){ await window.idb.del('transactions',t.transferPeerId); state.txs=state.txs.filter(x=>x.id!==t.transferPeerId); }
+//     await window.idb.del('transactions',t.id); state.txs=state.txs.filter(x=>x.id!==t.id); 
+//     if(window.renderAll) window.renderAll();
+//   });
+//   $$('[data-edit-tx]').forEach(b=>b.onclick=()=>{
+//     const t=state.txs.find(x=>x.id===b.dataset.editTx); if(!t) return;
+//     if(window.startEditTx) window.startEditTx(t);
+//   });
+// }
 
 function renderBudget(targetMonth = null){
   if(!window.state) return;
@@ -477,7 +594,112 @@ function renderCategoriesTable(){
     }
   });
 }
+async function saveInlineTxChange(t, fields){
+  // fields: {date, type, accountId, amount, category, payee, memo}
+  if(!window.state) return;
+  const state = window.state;
 
+  // 简化处理：如果原来是转账，暂不支持转成普通记录（可按需要扩展）
+  if(t.isTransfer){
+    alert('行内暂不支持编辑转账记录，请使用顶部编辑或重新录入。');
+    return;
+  }
+
+  const date = fields.date || todayStr();
+  const accId = fields.accountId || t.accountId;
+  const amt = Number(fields.amount);
+  if(!(amt > 0)){
+    alert('金额必须大于0');
+    return;
+  }
+
+  // 侧别 / 类型
+  let side = fields.type || t.side;
+  if(side !== 'in' && side !== 'out') side = 'out';
+
+  const payee = (fields.payee || '').trim();
+  const memo  = (fields.memo  || '').trim();
+  const cat   = (fields.category || '').trim() || t.category || '';
+
+  t.date = date;
+  t.accountId = accId;
+  t.side = side;
+  t.amount = amt;
+  t.payee = payee;
+  t.memo = memo;
+  t.category = cat;
+
+  await window.idb.put('transactions', t);
+  const idx = state.txs.findIndex(x=>x.id===t.id);
+  if(idx >= 0) state.txs[idx] = t;
+
+  if(window.renderAll) window.renderAll();
+  alert('流水已更新');
+}
+
+function startInlineEditTx(t, tr){
+  if(!window.state) return;
+  const state = window.state;
+  const acc = state.accounts.find(a=>a.id===t.accountId);
+
+  // 构造账户下拉 options
+  const accOptions = state.accounts
+    .map(a=>`<option value="${a.id}" ${a.id===t.accountId?'selected':''}>${a.name}</option>`)
+    .join('');
+
+  // 类型下拉
+  const typeOptions = `
+    <option value="out" ${(!t.isTransfer && t.side==='out')?'selected':''}>支出</option>
+    <option value="in"  ${(!t.isTransfer && t.side==='in')?'selected':''}>收入</option>
+    <option value="transfer" ${t.isTransfer?'selected':''} disabled>转账</option>
+  `;
+
+  // 分类下拉，沿用现有分类
+  const catOptions = (state.categories || [])
+    .map(c => `<option value="${c}" ${c===(t.category||'')?'selected':''}>${c}</option>`)
+    .join('');
+  const catSelect = `<select class="inline-cat">${catOptions}</select>`;
+
+  // 替换当前行为编辑态
+  tr.innerHTML = `
+    <td><input type="date" class="inline-date" value="${t.date || todayStr()}"></td>
+    <td><select class="inline-account">${accOptions}</select></td>
+    <td>
+      <select class="inline-type">
+        ${typeOptions}
+      </select>
+    </td>
+    <td>${catSelect} <input class="inline-payee" style="width:45%" placeholder="对方" value="${t.payee||''}"></td>
+    <td><input class="inline-memo" style="width:100%" placeholder="备注" value="${t.memo||''}"></td>
+    <td style="text-align:right">
+      <input class="inline-amount" type="number" step="0.01" style="width:100px;text-align:right" value="${t.amount}">
+    </td>
+    <td style="text-align:right">
+      <button class="btn primary btn-inline-save">保存</button>
+      <button class="btn btn-inline-cancel">取消</button>
+    </td>
+  `;
+
+  const btnSave   = tr.querySelector('.btn-inline-save');
+  const btnCancel = tr.querySelector('.btn-inline-cancel');
+
+  btnSave.onclick = async ()=>{
+    const date = tr.querySelector('.inline-date').value;
+    const accountId = tr.querySelector('.inline-account').value;
+    const type = tr.querySelector('.inline-type').value;
+    const amount = tr.querySelector('.inline-amount').value;
+    const category = tr.querySelector('.inline-cat') ? tr.querySelector('.inline-cat').value : '';
+    const payee = tr.querySelector('.inline-payee').value;
+    const memo  = tr.querySelector('.inline-memo').value;
+
+    await saveInlineTxChange(t, {date, accountId, type: type==='transfer'?t.side:type, amount, category, payee, memo});
+  };
+
+  btnCancel.onclick = ()=>{
+    // 取消时重新渲染整个表，恢复原状
+    if(window.renderTxTable) window.renderTxTable();
+  };
+}
 // 暴露到全局
 window.renderAll = renderAll;
 window.renderDashboard = renderDashboard;

@@ -219,14 +219,34 @@
       <div class="card">
         <div class="content">
           <div class="row">
-            <h3>流水</h3>
-            <div class="space"></div>
-            <div class="row">
-              <label class="muted">筛选：</label>
-              <select id="filter_account"></select>
-              <input id="filter_kw" placeholder="关键字/分类/对方" />
-              <button class="btn" id="btnClearFilter">清空</button>
-            </div>
+            <label class="muted">筛选：</label>
+          
+            <!-- 账户 -->
+            <select id="filter_account"></select>
+          
+            <!-- 起始日期 -->
+            <input id="filter_date_from" type="date" />
+          
+            <!-- 截止日期 -->
+            <input id="filter_date_to" type="date" />
+          
+            <!-- 类型（收入 / 支出 / 转账） -->
+            <select id="filter_type">
+              <option value="">全部类型</option>
+              <option value="in">收入</option>
+              <option value="out">支出</option>
+              <option value="transfer">转账</option>
+            </select>
+          
+            <!-- 分类 -->
+            <select id="filter_category">
+              <option value="">全部分类</option>
+              <!-- 选项由 JS 动态填充 -->
+            </select>
+          
+            <!-- 关键字 -->
+            <input id="filter_kw" placeholder="关键字/分类/对方" />
+            <button class="btn" id="btnClearFilter">清空</button>
           </div>
           <table id="txTable">
             <thead>

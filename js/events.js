@@ -43,7 +43,10 @@ function bindEvents(){
   $('#txnForm').onsubmit=saveTransaction;
   $('#btnResetTx').onclick=()=>{if(window.endEditTx) window.endEditTx();};
   $('#btnCancelEditTx').onclick=()=>{if(window.endEditTx) window.endEditTx();};
-  
+  $$('[data-edit-tx]').forEach(b=>b.onclick=()=>{
+    const t=state.txs.find(x=>x.id===b.dataset.editTx); if(!t) return;
+    if(window.startEditTx) window.startEditTx(t);
+  });
   document.addEventListener('keydown',e=>{
     if(e.key.toLowerCase()==='n'){ 
       $('#tx_amount').focus(); 
@@ -52,9 +55,28 @@ function bindEvents(){
     }
   });
 
-  $('#btnClearFilter').onclick=()=>{ $('#filter_account').value=''; $('#filter_kw').value=''; if(window.renderTxTable) window.renderTxTable(); };
-  $('#filter_account').onchange=()=>{if(window.renderTxTable) window.renderTxTable();}; 
-  $('#filter_kw').oninput=()=>{if(window.renderTxTable) window.renderTxTable();};
+  $('#btnClearFilter').onclick = () => {
+    $('#filter_account').value = '';
+    $('#filter_kw').value = '';
+    if ($('#filter_date_from')) $('#filter_date_from').value = '';
+    if ($('#filter_date_to')) $('#filter_date_to').value = '';
+    if ($('#filter_type')) $('#filter_type').value = '';
+    if ($('#filter_category')) $('#filter_category').value = '';
+    if(window.renderTxTable) window.renderTxTable();
+  };
+  
+  $('#filter_account').onchange = () => { if(window.renderTxTable) window.renderTxTable(); };
+  $('#filter_kw').oninput       = () => { if(window.renderTxTable) window.renderTxTable(); };
+  
+  const fFrom = $('#filter_date_from');
+  const fTo   = $('#filter_date_to');
+  const fType = $('#filter_type');
+  const fCat  = $('#filter_category');
+  
+  if (fFrom) fFrom.onchange = () => { if(window.renderTxTable) window.renderTxTable(); };
+  if (fTo)   fTo.onchange   = () => { if(window.renderTxTable) window.renderTxTable(); };
+  if (fType) fType.onchange = () => { if(window.renderTxTable) window.renderTxTable(); };
+  if (fCat)  fCat.onchange  = () => { if(window.renderTxTable) window.renderTxTable(); };
 
   $('#budgetForm').onsubmit=onSaveBudget;
   $('#btnResetBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};

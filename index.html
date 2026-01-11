@@ -35,6 +35,7 @@
             <span class="label">净资产（折算至基准）</span>
             <span id="netWorth" class="value amount">--</span>
             <span id="netWorthNote" class="note"></span>
+            <span id="monthResult" class="note"></span>
           </div>
         </div>
         <div class="card">
@@ -65,7 +66,7 @@
             </div>
           </div>
         </div>
-        <div class="card" style="margin-top:14px">
+        <!-- <div class="card" style="margin-top:14px">
           <div class="content">
             <div class="row">
               <h3>本月收支结构（基准）</h3>
@@ -74,7 +75,7 @@
             </div>
             <canvas id="iePieChart" height="260"></canvas>
           </div>
-        </div>
+        </div> -->
 
         <div class="card">
           <div class="content">
@@ -293,10 +294,17 @@
                 <option value="year">按年</option>
               </select>
 
-              <label class="muted">查询月份：</label>
+              <!-- 按月查询控件 -->
+              <label class="muted" id="budgetMonthLabelControl">查询月份：</label>
               <input type="month" id="budgetMonthSelector"
                 style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)" />
-              <button class="btn" id="btnResetBudgetMonth" title="回到当前月">本月</button>
+
+              <!-- 按年查询控件（仅在视图=按年 时显示） -->
+              <label class="muted" id="budgetYearLabelControl" style="display:none;">查询年份：</label>
+              <select id="budgetYearSelector"
+                style="display:none;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text)">
+              </select>
+                <button class="btn" id="btnResetBudgetMonth" title="回到当前月">本月</button>
             </div>
           </div>
           <div class="row" style="margin-top:8px"><span class="muted" id="budgetMonthLabel"></span></div>

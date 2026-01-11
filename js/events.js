@@ -83,45 +83,109 @@ function bindEvents(){
   $('#btnCancelEditBudget').onclick=()=>{if(window.endEditBudget) window.endEditBudget();};
   
   // 预算月份选择器
-    const budgetViewMode = $('#budgetViewMode');
-    const budgetMonthSelector = $('#budgetMonthSelector');
-    if (budgetMonthSelector) {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      budgetMonthSelector.value = `${year}-${month}`;
+  const budgetViewMode      = $('#budgetViewMode');
+  const budgetMonthSelector = $('#budgetMonthSelector');
+  const budgetYearSelector  = $('#budgetYearSelector');
+  const lblMonthCtrl        = $('#budgetMonthLabelControl');
+  const lblYearCtrl         = $('#budgetYearLabelControl');
+
+  // 初始化月份为当前月
+  if (budgetMonthSelector) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    budgetMonthSelector.value = `${year}-${month}`;
+  }
+
+  // 初始化年份下拉：从当前年份往前 10 年
+  if (budgetYearSelector) {
+    const nowY = new Date().getFullYear();
+    budgetYearSelector.innerHTML = '';
+    for (let y = nowY; y >= nowY - 10; y--) {
+      const opt = document.createElement('option');
+      opt.value = String(y);
+      opt.textContent = String(y);
+      budgetYearSelector.appendChild(opt);
     }
-  
-    function refreshBudgetByControls() {
-      if (!window.renderBudget) return;
-      const mode = budgetViewMode ? budgetViewMode.value : 'month';
+    budgetYearSelector.value = String(nowY);
+  }
+
+  function refreshBudgetByControls() {
+    if (!window.renderBudget) return;
+    const mode = budgetViewMode ? budgetViewMode.value : 'month';
+
+    if (mode === 'year') {
+      const yearVal = budgetYearSelector ? budgetYearSelector.value : null;
+      window.renderBudget(yearVal || null, 'year');
+    } else {
       const monthValue = budgetMonthSelector ? budgetMonthSelector.value : null;
-      window.renderBudget(monthValue || null, mode);
-      if (window.closeBudgetDetail) window.closeBudgetDetail();
+      window.renderBudget(monthValue || null, 'month');
     }
-  
-    if (budgetViewMode) {
-      budgetViewMode.onchange = () => {
+    if (window.closeBudgetDetail) window.closeBudgetDetail();
+  }
+
+  // 根据视图切换显示不同的查询控件
+  function syncBudgetQueryControls() {
+    const mode = budgetViewMode ? budgetViewMode.value : 'month';
+    if (!lblMonthCtrl || !lblYearCtrl || !budgetMonthSelector || !budgetYearSelector) return;
+    if (mode === 'year') {
+      lblMonthCtrl.style.display = 'none';
+      budgetMonthSelector.style.display = 'none';
+      lblYearCtrl.style.display = '';
+      budgetYearSelector.style.display = '';
+    } else {
+      lblMonthCtrl.style.display = '';
+      budgetMonthSelector.style.display = '';
+      lblYearCtrl.style.display = 'none';
+      budgetYearSelector.style.display = 'none';
+    }
+  }
+
+  if (budgetViewMode) {
+    budgetViewMode.onchange = () => {
+      syncBudgetQueryControls();
+      refreshBudgetByControls();
+    };
+    // 初始同步一次
+    syncBudgetQueryControls();
+  }
+
+  if (budgetMonthSelector) {
+    budgetMonthSelector.onchange = () => {
+      if (budgetViewMode && budgetViewMode.value === 'month') {
         refreshBudgetByControls();
-      };
-    }
-  
-    if (budgetMonthSelector) {
-      budgetMonthSelector.onchange = () => {
+      }
+    };
+  }
+
+  if (budgetYearSelector) {
+    budgetYearSelector.onchange = () => {
+      if (budgetViewMode && budgetViewMode.value === 'year') {
         refreshBudgetByControls();
-      };
-    }
+      }
+    };
+  }
   
   
   // 重置到当前月按钮
   $('#btnResetBudgetMonth').onclick = ()=>{
-        if (budgetMonthSelector) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            budgetMonthSelector.value = `${year}-${month}`;
-          }
-          refreshBudgetByControls();
+    if (budgetViewMode && budgetViewMode.value === 'year') {
+      // 年度模式：重置为当前年份
+      if (budgetYearSelector) {
+        const now = new Date();
+        const year = now.getFullYear();
+        budgetYearSelector.value = String(year);
+      }
+    } else {
+      // 按月模式：重置为当前月
+      if (budgetMonthSelector) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        budgetMonthSelector.value = `${year}-${month}`;
+      }
+    }
+    refreshBudgetByControls();
   };
   
   // 关闭预算明细按钮

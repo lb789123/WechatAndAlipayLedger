@@ -163,7 +163,8 @@ function onPieHover(e){
   const t=$('#tooltip');
   if(dist>R){ t.style.display='none'; return; }
   let ang=Math.atan2(dy,dx);
-  if(ang< -Math.PI/2){ ang+=2*Math.PI; }
+  // Normalize angle to match pie start position (-PI/2)
+  if(ang< 0){ ang+=2*Math.PI; }
   const hit=arcs.find(a=> ang>=a.start && ang<a.end);
   if(!hit){ t.style.display='none'; return; }
   const base=state.prefs.baseCurrency;

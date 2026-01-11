@@ -435,7 +435,7 @@ function renderBudget(targetMonth = null, viewMode = 'month'){
   }
   
   const wrap=$('#budgetGrid'); wrap.innerHTML='';
-  const netSpent={}; // 改为净支出（支出-收入）
+  const netSpent={}; // 净支出：负值表示净支出，正值表示净收入
   
   // 筛选时间范围内的交易（支持refund-aware）
   state.txs.filter(t=>{
@@ -447,12 +447,13 @@ function renderBudget(targetMonth = null, viewMode = 'month'){
     const v=amountToBase(t.amount,acc.currency); if(v===null) return;
     const c=t.category||'其他';
     if(!netSpent[c]) netSpent[c] = 0;
-    // 支出为负，收入为正
+    // 支出减少netSpent（使其更负），收入增加netSpent（使其更正）
+    // 最终：netSpent = 收入 - 支出
     if(t.side === 'out') netSpent[c] -= v;
     if(t.side === 'in') netSpent[c] += v;
   });
   
-  // 计算实际使用额：Math.max(0, -netSum) 即净支出金额
+  // 计算实际使用额：Math.max(0, -netSum) 即净支出金额（仅当支出大于收入时为正）
   const spent = {};
   Object.keys(netSpent).forEach(c => {
     spent[c] = Math.max(0, -netSpent[c]);
@@ -566,10 +567,11 @@ function showBudgetDetail(category, month, viewMode = 'month'){
     const amtClass = t.side === 'in' ? 'positive' : 'negative';
     const displayAmt = t.amount;
     
-    // 计算净支出贡献（支出减收入）
+    // 计算净支出贡献：支出减少total（使其更负），收入增加total（使其更正）
+    // 与预算计算逻辑保持一致
     if(baseAmount !== null){
-      if(t.side === 'out') total += baseAmount;
-      if(t.side === 'in') total -= baseAmount;
+      if(t.side === 'out') total -= baseAmount;
+      if(t.side === 'in') total += baseAmount;
     }
     
     tr.innerHTML = `

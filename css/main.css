@@ -101,6 +101,7 @@ tr.drop-target{outline:2px dashed var(--primary)}
 
 /* Budget form collapsible */
 #budgetFormCard.collapsed #budgetFormWrapper{display:none}
+#btnToggleBudgetForm{position:relative}
 #budgetFormCard.collapsed #btnToggleBudgetForm::before{content:'▶';position:absolute;left:0}
 #budgetFormCard:not(.collapsed) #btnToggleBudgetForm::before{content:'▼';position:absolute;left:0}
 
